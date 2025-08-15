@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 224 71.4% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71.4% 4.1%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 71.4% 4.1%;
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 224 71.4% 4.1%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 20% 96%;
+  --accent-foreground: 224 71.4% 4.1%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 20% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 160 84% 39%;
+}
+
+* {
+  @reference border-border;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}

@@ -12,6 +12,7 @@ class ItemSplit(BaseModel):
     assigned_to: List["str"] = Field(..., description="List of people assigned to this item.")
     quantity: Optional["str"] = Field(None, description="Quantity of the item, if available.")
     status: Optional[str] = Field("shopped", description="Status of the item, e.g., 'shopped', 'weight-adjusted', 'cancelled'.")
+    confidence: str = Field("medium", description="Confidence level of the item extraction (low, medium, high).")
 
 class Tax(AssigneeList):
     """Defines the structure for tax."""

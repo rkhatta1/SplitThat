@@ -5,3 +5,7 @@ Pillow
 google-generativeai
 pydantic-settings
 pdf2image
+fastapi-cors
+splitwise
+psycopg2-binary
+SQLAlchemy

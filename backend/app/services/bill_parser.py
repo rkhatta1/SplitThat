@@ -30,7 +30,8 @@ class MultimodalBillParser:
             2. Identify every individual item, its quantity, its status (e.g., shopped, weight-adjusted, cancelled), and its total price.
             3. Also, explicitly identify the **Tax** amount and the **Tip** amount if they are listed.
             4. Analyze the User's Instruction to assign each item, the Tax, and the Tip to the correct participant(s).
-            5. You MUST respond ONLY with a single, valid JSON object that follows the schema provided below. Do not include any other text, explanations, or markdown formatting.
+            5. For each item, also include a `confidence` level (low, medium, or high) indicating how certain you are about the extracted information for that item.
+            6. You MUST respond ONLY with a single, valid JSON object that follows the schema provided below. Do not include any other text, explanations, or markdown formatting.
 
             **JSON Output Schema:**
             {BillSplitResponse.model_json_schema()}
