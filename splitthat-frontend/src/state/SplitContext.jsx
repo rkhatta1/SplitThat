@@ -11,6 +11,9 @@ export function SplitProvider({ children }) {
     tax: "equal", // or "proportional"
     tip: "equal"
   });
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
 
   const value = useMemo(
     () => ({
@@ -23,9 +26,15 @@ export function SplitProvider({ children }) {
       result,
       setResult,
       distribution,
-      setDistribution
+      setDistribution,
+      groups,
+      setGroups,
+      selectedGroup,
+      setSelectedGroup,
+      currentUser,
+      setCurrentUser
     }),
-    [file, participants, userPrompt, result, distribution]
+    [file, participants, userPrompt, result, distribution, groups, selectedGroup, currentUser]
   );
 
   return (

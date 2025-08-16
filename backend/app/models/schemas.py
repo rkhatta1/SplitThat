@@ -32,3 +32,15 @@ class BillSplitResponse(BaseModel):
 ItemSplit.update_forward_refs()
 AssigneeList.update_forward_refs()
 BillSplitResponse.update_forward_refs()
+
+class PublishSplitUser(BaseModel):
+    user_id: int
+    paid_share: float
+    owed_share: float
+
+class PublishSplitRequest(BaseModel):
+    cost: float
+    description: str
+    users: List[PublishSplitUser]
+    comment: str
+    group_id: Optional[int] = None

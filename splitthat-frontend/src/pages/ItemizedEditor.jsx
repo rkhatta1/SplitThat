@@ -7,7 +7,7 @@ import { Input } from "../components/ui/input";
 import { Table, THead, TR, TH, TBody, TD } from "../components/ui/table";
 import { useSplit } from "../state/SplitContext";
 import { computeTotals } from "../utils/splitting";
-import { money } from "../lib/utils";
+import { cn, money } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 
 export default function ItemizedEditor() {
@@ -17,7 +17,9 @@ export default function ItemizedEditor() {
     result,
     setResult,
     distribution,
-    setDistribution
+    setDistribution,
+    currentUser,
+    selectedGroup
   } = useSplit();
 
   const [filter, setFilter] = useState("");
@@ -46,7 +48,7 @@ export default function ItemizedEditor() {
     () =>
       computeTotals(
         result.items,
-        participants,
+        participants.map(p => `${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`),
         result.tax,
         result.tip,
         distribution
@@ -78,6 +80,88 @@ export default function ItemizedEditor() {
     a.href = URL.createObjectURL(blob);
     a.download = "splitthat-result.json";
     a.click();
+  }
+
+  function publishToSplitwise() {
+    const accessToken = localStorage.getItem("splitwise_access_token");
+    const accessTokenSecret = localStorage.getItem("splitwise_access_token_secret");
+
+    if (!accessToken || !accessTokenSecret) {
+      alert("Please login with Splitwise first.");
+      return;
+    }
+
+    if (!currentUser) {
+      alert("Could not determine the current user. Please try logging in again.");
+      cnsole.error("Current user is not set in SplitContext.");
+      return;
+    }
+
+    console.log("Current user ID:", currentUser);
+
+    // Format the comment
+    let comment = "";
+    result.items.forEach(item => {
+      comment += `${item.item_name} - ${item.price.toFixed(2)} (${item.assigned_to.join(", ")})\n`;
+    });
+    if (result.tax) {
+      comment += `Tax: ${result.tax.amount.toFixed(2)}\n`;
+    }
+    if (result.tip) {
+      comment += `Tip: ${result.tip.amount.toFixed(2)}\n`;
+    }
+
+    // Construct the users array with correct paid_share and owed_share
+    const users = participants.map(p => ({
+      user_id: p.id,
+      paid_share: p.id === currentUser.splitwise_id ? totals.grandTotal.toFixed(2) : "0.00",
+      owed_share: totals.totals[`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`]
+    }));
+
+    // Fix rounding issues for owed_share
+    const totalOwed = users.reduce((sum, user) => sum + parseFloat(user.owed_share), 0);
+    const difference = totals.grandTotal - totalOwed;
+
+    if (difference !== 0) {
+      // Add the difference to the first user's owed_share
+      users[0].owed_share = (parseFloat(users[0].owed_share) + difference).toFixed(2);
+    }
+
+    // Convert owed_share to string with 2 decimal places
+    users.forEach(user => {
+      user.owed_share = parseFloat(user.owed_share).toFixed(2);
+    });
+
+
+    // Construct the request body
+    const requestBody = {
+      cost: totals.grandTotal,
+      description: "SplitThat Bill", // You can make this dynamic
+      users: users,
+      comment: comment,
+      group_id: selectedGroup ? parseInt(selectedGroup) : null
+    };
+
+    fetch("http://localhost:8000/api/v1/publish-split", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-splitwise-access-token": accessToken,
+        "x-splitwise-access-token-secret": accessTokenSecret
+      },
+      body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+      if (response.ok) {
+        alert("Split published successfully!");
+      } else {
+        alert("Failed to publish split.");
+      }
+    })
+    .catch(error => {
+      console.error("Error publishing split:", error);
+      alert("An error occurred while publishing the split.");
+    });
   }
 
   function getConfidenceClass(confidence) {
@@ -152,8 +236,8 @@ export default function ItemizedEditor() {
                     <TH className="min-w-[220px]">Item</TH>
                     <TH className="min-w-[80px]">$</TH>
                     {participants.map((p) => (
-                      <TH key={p} className="text-center">
-                        {p}
+                      <TH key={p.id} className="text-center">
+                        {`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`}
                       </TH>
                     ))}
                   </TR>
@@ -189,13 +273,13 @@ export default function ItemizedEditor() {
                           />
                         </TD>
                         {participants.map((p) => (
-                          <TD key={p} className="text-center">
+                          <TD key={p.id} className="text-center">
                             <Checkbox
                               checked={
-                                it.assigned_to?.includes(p) || false
+                                it.assigned_to?.includes(`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`) || false
                               }
                               onChange={() =>
-                                toggleAssign(globalIdx, p)
+                                toggleAssign(globalIdx, `${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`)
                               }
                             />
                           </TD>
@@ -248,8 +332,8 @@ export default function ItemizedEditor() {
                     </TD>
                     <TD></TD>
                     {participants.map((p) => (
-                      <TD key={p} className="text-center">
-                        ${money(totals.totals[p]).toFixed(2)}
+                      <TD key={p.id} className="text-center">
+                        ${money(totals.totals[`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`]).toFixed(2)}
                       </TD>
                     ))}
                   </TR>
@@ -262,6 +346,7 @@ export default function ItemizedEditor() {
                 Start over
               </Button>
               <Button onClick={exportJson}>Export JSON</Button>
+              <Button onClick={publishToSplitwise}>Publish to Splitwise</Button>
             </div>
           </CardContent>
         </Card>

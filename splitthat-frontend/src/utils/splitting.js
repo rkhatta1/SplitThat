@@ -8,6 +8,10 @@ import { money } from "../lib/utils";
  * options: { tax: "equal"|"proportional", tip: "equal"|"proportional" }
  */
 export function computeTotals(items, participants, tax, tip, options) {
+  console.log("--- In computeTotals ---");
+  console.log("Items:", items);
+  console.log("Participants:", participants);
+
   const totals = Object.fromEntries(
     participants.map((p) => [p, 0])
   );
@@ -27,6 +31,8 @@ export function computeTotals(items, participants, tax, tip, options) {
       if (p in totals) totals[p] = money(totals[p] + per);
     });
   });
+
+  console.log("Totals after items:", { ...totals });
 
   // Helper: proportional by items total
   const itemsTotals = { ...totals };
@@ -52,6 +58,8 @@ export function computeTotals(items, participants, tax, tip, options) {
     }
   }
 
+  console.log("Totals after tax:", { ...totals });
+
   // Tip
   if (tip && Number(tip.amount) > 0) {
     if (options.tip === "proportional" && itemsSum > 0) {
@@ -68,6 +76,8 @@ export function computeTotals(items, participants, tax, tip, options) {
       });
     }
   }
+
+  console.log("Totals after tip:", { ...totals });
 
   const taxAmount = money(Number(tax?.amount || 0));
   const tipAmount = money(Number(tip?.amount || 0));

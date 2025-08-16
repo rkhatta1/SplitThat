@@ -16,8 +16,16 @@ export default function HomeUpload() {
     participants,
     setParticipants,
     userPrompt,
-    setUserPrompt
+    setUserPrompt,
+    groups,
+    setGroups,
+    selectedGroup,
+    setSelectedGroup,
+    setCurrentUser
   } = useSplit();
+
+  const [error, setError] = useState("");
+  const [allFriends, setAllFriends] = useState([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -27,9 +35,14 @@ export default function HomeUpload() {
           const response = await fetch("http://localhost:8000/api/v1/me");
           if (response.ok) {
             const userData = await response.json();
+            setCurrentUser(userData);
             if (userData.friends) {
-              const friendNames = userData.friends.map(friend => `${friend.first_name} ${friend.last_name}`);
-              setParticipants(friendNames);
+              setAllFriends(userData.friends);
+              const currentUserAsParticipant = { ...userData, id: userData.splitwise_id };
+              setParticipants([currentUserAsParticipant, ...userData.friends]);
+            }
+            if (userData.groups) {
+              setGroups(userData.groups);
             }
           }
         }
@@ -39,9 +52,19 @@ export default function HomeUpload() {
     };
 
     fetchUserData();
-  }, [setParticipants]);
+  }, [setParticipants, setGroups, setAllFriends]);
 
-  const [error, setError] = useState("");
+  useEffect(() => {
+    if (selectedGroup) {
+      const group = groups.find((g) => g.id === parseInt(selectedGroup));
+      if (group) {
+        setParticipants(group.members);
+      }
+    } else {
+      // If no group is selected, revert to the full friends list
+      setParticipants(allFriends);
+    }
+  }, [selectedGroup, groups, setParticipants, allFriends]);
 
   function onSubmit(e) {
     e.preventDefault();
@@ -88,6 +111,22 @@ export default function HomeUpload() {
                     accept="image/*,application/pdf"
                     onFile={setFile}
                   />
+                </section>
+
+                <section className="space-y-2">
+                  <h2 className="text-sm font-medium">Group</h2>
+                  <select
+                    value={selectedGroup}
+                    onChange={(e) => setSelectedGroup(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="">Select a group (optional)</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
                 </section>
 
                 <section className="space-y-2">

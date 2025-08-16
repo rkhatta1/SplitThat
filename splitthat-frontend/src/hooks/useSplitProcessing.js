@@ -16,12 +16,14 @@ export function useSplitProcessing() {
     abortRef.current = ctrl;
 
     try {
+      const participantNames = participants.map(p => `${p.first_name} ${p.last_name || ''}`);
       const data = await splitBill({
         file,
-        participants,
+        participants: participantNames,
         userPrompt: prompt,
         signal: ctrl.signal
       });
+      console.log("Data from backend:", data);
       // Ensure items array exists
       const items = Array.isArray(data.items) ? data.items : [];
       setResult({
@@ -29,9 +31,9 @@ export function useSplitProcessing() {
         items: items.map((it, idx) => ({
           id: `${idx}-${it.item_name ?? "item"}`,
           ...it,
-          assigned_to: Array.isArray(it.assigned_to)
+          assigned_to: Array.isArray(it.assigned_to) && it.assigned_to.length > 0
             ? it.assigned_to
-            : []
+            : participantNames
         }))
       });
       setStatus("done");

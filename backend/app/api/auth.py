@@ -59,7 +59,11 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
         logger.info(f"User found in DB: {db_user is not None}")
 
         friends_data = [{"id": f.getId(), "first_name": f.getFirstName(), "last_name": f.getLastName(), "email": f.getEmail()} for f in friends]
-        groups_data = [{"id": g.getId(), "name": g.getName()} for g in groups]
+        groups_data = []
+        for g in groups:
+            members = g.getMembers()
+            members_data = [{"id": m.getId(), "first_name": m.getFirstName(), "last_name": m.getLastName(), "email": m.getEmail()} for m in members]
+            groups_data.append({"id": g.getId(), "name": g.getName(), "members": members_data})
 
         if not db_user:
             logger.info("User not found in DB, creating new user...")
