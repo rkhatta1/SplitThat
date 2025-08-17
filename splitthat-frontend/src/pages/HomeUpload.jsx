@@ -7,6 +7,7 @@ import ParticipantsInput from "../components/ParticipantsInput";
 import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
 import { useSplit } from "../state/SplitContext";
+import api from "../api/api";
 
 export default function HomeUpload() {
   const nav = useNavigate();
@@ -21,32 +22,35 @@ export default function HomeUpload() {
     setGroups,
     selectedGroup,
     setSelectedGroup,
-    setCurrentUser
+    setCurrentUser,
+    currentUser
   } = useSplit();
 
   const [error, setError] = useState("");
   const [allFriends, setAllFriends] = useState([]);
+  const [availableParticipants, setAvailableParticipants] = useState([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
+      console.log("Fetching user data...");
       try {
         const jwt = localStorage.getItem("jwt");
+        console.log("JWT from localStorage:", jwt);
         if (jwt) {
-          const response = await fetch("http://localhost:8000/api/v1/me", {
-            headers: {
-              "Authorization": `Bearer ${jwt}`
-            }
-          });
+          console.log("Making request to /me endpoint...");
+          const response = await api.fetch("http://localhost:8000/api/v1/me");
+          console.log("Response from /me endpoint:", response);
           if (response.ok) {
             const userData = await response.json();
+            console.log("User data received:", userData);
             setCurrentUser(userData);
             if (userData.friends) {
               setAllFriends(userData.friends);
               const currentUserAsParticipant = { ...userData, id: userData.splitwise_id };
-              setParticipants([currentUserAsParticipant, ...userData.friends]);
+              setAvailableParticipants([currentUserAsParticipant, ...userData.friends]);
             }
             if (userData.groups) {
-              setGroups(userData.groups);
+              setGroups(userData.groups.filter(g => g.name !== "Non-group expenses"));
             }
           }
         }
@@ -56,19 +60,30 @@ export default function HomeUpload() {
     };
 
     fetchUserData();
-  }, [setParticipants, setGroups, setAllFriends]);
+  }, [setParticipants, setGroups, setAllFriends, setCurrentUser, setAvailableParticipants]);
 
   useEffect(() => {
     if (selectedGroup) {
       const group = groups.find((g) => g.id === parseInt(selectedGroup));
       if (group) {
-        setParticipants(group.members);
+        setAvailableParticipants(group.members);
+        // Filter the current participants to only include members of the new group
+        setParticipants(prevParticipants =>
+          prevParticipants.filter(p => group.members.some(m => m.id === p.id))
+        );
       }
     } else {
-      // If no group is selected, revert to the full friends list
-      setParticipants(allFriends);
+      // If no group is selected, revert to the full friends list plus the current user
+      if (currentUser) {
+        const currentUserAsParticipant = { ...currentUser, id: currentUser.splitwise_id };
+        setAvailableParticipants([currentUserAsParticipant, ...allFriends]);
+        // Also filter the current participants to only include friends and the current user
+        setParticipants(prevParticipants =>
+          prevParticipants.filter(p => [currentUserAsParticipant, ...allFriends].some(f => f.id === p.id))
+        );
+      }
     }
-  }, [selectedGroup, groups, setParticipants, allFriends]);
+  }, [selectedGroup, groups, allFriends, currentUser, setParticipants]);
 
   function onSubmit(e) {
     e.preventDefault();
@@ -138,6 +153,7 @@ export default function HomeUpload() {
                   <ParticipantsInput
                     value={participants}
                     onChange={setParticipants}
+                    availableParticipants={availableParticipants}
                   />
                 </section>
 

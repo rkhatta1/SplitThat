@@ -5,7 +5,9 @@ from splitwise import Splitwise
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.db_models import User
-from app.core.security import create_access_token
+from app.core.security import create_access_token, create_refresh_token, get_hashed_token, verify_token_hash
+from app.models.schemas import RefreshTokenRequest
+from jose import jwt
 import logging
 
 print("--- auth.py module is being imported ---")
@@ -91,9 +93,14 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
 
         # Create a JWT for the user
         access_token_jwt = create_access_token(data={"sub": str(db_user.id)})
+        refresh_token_jwt = create_refresh_token(data={"sub": str(db_user.id)})
 
-        # Redirect to the frontend with the JWT
-        return RedirectResponse(f"http://localhost:5173/login-success?token={access_token_jwt}")
+        # Store the hashed refresh token in the database
+        db_user.hashed_refresh_token = get_hashed_token(refresh_token_jwt)
+        db.commit()
+
+        # Redirect to the frontend with the JWTs
+        return RedirectResponse(f"http://localhost:5173/login-success?token={access_token_jwt}&refresh_token={refresh_token_jwt}")
 
     except Exception as e:
         logger.error(f"--- ERROR in auth_splitwise_callback: {e} ---")
@@ -101,3 +108,30 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not authenticate with Splitwise: {e}",
         )
+
+@router.post("/auth/refresh-token")
+def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """
+    Refreshes the access token.
+    """
+    try:
+        payload = jwt.decode(request.refresh_token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        if not verify_token_hash(request.refresh_token, user.hashed_refresh_token):
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        access_token_jwt = create_access_token(data={"sub": str(user.id)})
+        return {"access_token": access_token_jwt}
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")

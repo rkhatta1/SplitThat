@@ -44,3 +44,6 @@ class PublishSplitRequest(BaseModel):
     users: List[PublishSplitUser]
     comment: str
     group_id: Optional[int] = None
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

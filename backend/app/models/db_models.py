@@ -16,6 +16,7 @@ class User(Base):
     groups = Column(JSON)
     friends = Column(JSON)
     splitwise_access_token = Column(JSON)
+    hashed_refresh_token = Column(String, nullable=True)
 
     splits = relationship("Split", back_populates="user")
 

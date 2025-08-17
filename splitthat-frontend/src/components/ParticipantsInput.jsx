@@ -1,29 +1,45 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Input } from "./ui/input";
-import { Button } from "./ui/button";
 
 export default function ParticipantsInput({
   value,
   onChange,
-  placeholder = "Add a person and press Enter"
+  availableParticipants,
+  placeholder = "Search for participants to add"
 }) {
-  const [text, setText] = useState("");
-  const ref = useRef(null);
+  const [searchText, setSearchText] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  // The addFromText functionality is disabled for now,
-  // as participants are added from the friends list or groups.
-  function addFromText() {
-    // const t = text.trim().replace(/,$/, "");
-    // if (!t) return;
-    // if (!value.find(p => `${p.first_name} ${p.last_name}` === t)) {
-    //   // This would require creating a new participant object with a unique ID.
-    //   // For now, we'll just disable adding new participants manually.
-    // }
-    // setText("");
+  const filteredParticipants = searchText
+    ? availableParticipants.filter(p =>
+        `${p.first_name} ${p.last_name || ''}`.toLowerCase().includes(searchText.toLowerCase()) &&
+        !value.some(selected => selected.id === p.id)
+      )
+    : [];
+
+  function addParticipant(participant) {
+    onChange([...value, participant]);
+    setSearchText("");
+    setHighlightedIndex(-1);
   }
 
   function remove(participantId) {
     onChange(value.filter((p) => p.id !== participantId));
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex(prevIndex =>
+        prevIndex < filteredParticipants.length - 1 ? prevIndex + 1 : prevIndex
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex(prevIndex => (prevIndex > 0 ? prevIndex - 1 : 0));
+    } else if (e.key === "Enter" && highlightedIndex > -1) {
+      e.preventDefault();
+      addParticipant(filteredParticipants[highlightedIndex]);
+    }
   }
 
   return (
@@ -45,22 +61,34 @@ export default function ParticipantsInput({
           </span>
         ))}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="relative">
         <Input
-          ref={ref}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setHighlightedIndex(-1);
+          }}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled // Disable the input for now
         />
-        <Button
-          variant="outline"
-          onClick={addFromText}
-          type="button"
-          disabled // Disable the button for now
-        >
-          Add
-        </Button>
+        {filteredParticipants.length > 0 && (
+          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+            <ul>
+              {filteredParticipants.map((p, index) => (
+                <li
+                  key={p.id}
+                  className={`px-3 py-2 cursor-pointer hover:bg-secondary ${
+                    index === highlightedIndex ? "bg-secondary" : ""
+                  }`}
+                  onClick={() => addParticipant(p)}
+                  onMouseOver={() => setHighlightedIndex(index)}
+                >
+                  {`${p.first_name} ${p.last_name || ''}`}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

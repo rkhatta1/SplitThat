@@ -25,3 +25,19 @@ def verify_token(token: str, credentials_exception):
         return user_id
     except JWTError:
         raise credentials_exception
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return encoded_jwt
+
+def get_hashed_token(token: str):
+    return pwd_context.hash(token)
+
+def verify_token_hash(token: str, hashed_token: str):
+    return pwd_context.verify(token, hashed_token)

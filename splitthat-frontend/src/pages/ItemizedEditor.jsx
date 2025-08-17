@@ -9,6 +9,7 @@ import { useSplit } from "../state/SplitContext";
 import { computeTotals } from "../utils/splitting";
 import { cn, money } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
+import api from "../api/api";
 
 export default function ItemizedEditor() {
   const nav = useNavigate();
@@ -141,12 +142,8 @@ export default function ItemizedEditor() {
       group_id: selectedGroup ? parseInt(selectedGroup) : null
     };
 
-    fetch("http://localhost:8000/api/v1/publish-split", {
+    api.fetch("http://localhost:8000/api/v1/publish-split", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${jwt}`
-      },
       body: JSON.stringify(requestBody)
     })
     .then(response => {

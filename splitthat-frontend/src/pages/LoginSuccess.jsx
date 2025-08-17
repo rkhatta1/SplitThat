@@ -8,9 +8,13 @@ export default function LoginSuccess() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get("token");
+    const refreshToken = params.get("refresh_token");
 
     if (token) {
       localStorage.setItem("jwt", token);
+    }
+    if (refreshToken) {
+      localStorage.setItem("refresh_token", refreshToken);
     }
 
     navigate("/");
