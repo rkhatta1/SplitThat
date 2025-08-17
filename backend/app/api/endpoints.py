@@ -6,6 +6,7 @@ from app.services.bill_parser import MultimodalBillParser, get_multimodal_parser
 from app.models.schemas import BillSplitResponse
 from app.core.database import get_db
 from app.models.db_models import Split, User
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -59,16 +60,8 @@ async def split_bill_endpoint(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 @router.get("/me")
-def get_current_user_data(db: Session = Depends(get_db)):
+def get_current_user_data(current_user: User = Depends(get_current_user)):
     """
     Returns the current user's data from the database.
     """
-    # TODO: Get the current user's ID from the session/token
-    current_user_id = 1 # Replace with actual user ID
-
-    db_user = db.query(User).filter(User.id == current_user_id).first()
-
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return db_user
+    return current_user

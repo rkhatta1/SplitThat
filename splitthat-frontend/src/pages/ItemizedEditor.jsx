@@ -83,11 +83,10 @@ export default function ItemizedEditor() {
   }
 
   function publishToSplitwise() {
-    const accessToken = localStorage.getItem("splitwise_access_token");
-    const accessTokenSecret = localStorage.getItem("splitwise_access_token_secret");
+    const jwt = localStorage.getItem("jwt");
 
-    if (!accessToken || !accessTokenSecret) {
-      alert("Please login with Splitwise first.");
+    if (!jwt) {
+      alert("Please login first.");
       return;
     }
 
@@ -146,8 +145,7 @@ export default function ItemizedEditor() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-splitwise-access-token": accessToken,
-        "x-splitwise-access-token-secret": accessTokenSecret
+        "Authorization": `Bearer ${jwt}`
       },
       body: JSON.stringify(requestBody)
     })

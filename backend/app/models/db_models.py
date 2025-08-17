@@ -15,6 +15,7 @@ class User(Base):
     # Storing groups and friends as JSON for simplicity
     groups = Column(JSON)
     friends = Column(JSON)
+    splitwise_access_token = Column(JSON)
 
     splits = relationship("Split", back_populates="user")
 

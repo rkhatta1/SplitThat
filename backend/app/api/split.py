@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import List
+from sqlalchemy.orm import Session
 from splitwise import Splitwise
 from app.core.config import settings
+from app.core.database import get_db
+from app.models.db_models import Split, User
+from app.api.deps import get_current_user
 from app.models.schemas import PublishSplitRequest
 from splitwise.expense import Expense
 from splitwise.user import ExpenseUser
@@ -14,8 +18,8 @@ logger = logging.getLogger(__name__)
 @router.post("/publish-split")
 def publish_split(
     request: PublishSplitRequest,
-    x_splitwise_access_token: str = Header(...),
-    x_splitwise_access_token_secret: str = Header(...)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Publishes a split to Splitwise.
@@ -25,11 +29,7 @@ def publish_split(
         consumer_key=settings.splitwise_consumer_key,
         consumer_secret=settings.splitwise_consumer_secret
     )
-    access_token = {
-        'oauth_token': x_splitwise_access_token,
-        'oauth_token_secret': x_splitwise_access_token_secret
-    }
-    s_obj.setAccessToken(access_token)
+    s_obj.setAccessToken(current_user.splitwise_access_token)
     logger.info("Splitwise object created and access token set.")
 
     try:
@@ -60,6 +60,16 @@ def publish_split(
         logger.info(f"Creating comment for expense {expense_id} with content: {request.comment}")
         s_obj.createComment(expense_id, request.comment)
         logger.info("Comment created successfully.")
+
+        # Save the split to the database
+        db_split = Split(
+            user_id=current_user.id,
+            split_data=request.model_dump()
+        )
+        db.add(db_split)
+        db.commit()
+        db.refresh(db_split)
+        logger.info(f"Split saved to database with ID: {db_split.id}")
 
         return {"message": "Split published successfully!"}
 

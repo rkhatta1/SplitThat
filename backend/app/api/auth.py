@@ -5,6 +5,7 @@ from splitwise import Splitwise
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.db_models import User
+from app.core.security import create_access_token
 import logging
 
 print("--- auth.py module is being imported ---")
@@ -74,6 +75,7 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
                 last_name=current_user.getLastName(),
                 friends=friends_data,
                 groups=groups_data,
+                splitwise_access_token=access_token
             )
             db.add(db_user)
             db.commit()
@@ -83,11 +85,15 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
             logger.info("User found in DB, updating user...")
             db_user.friends = friends_data
             db_user.groups = groups_data
+            db_user.splitwise_access_token = access_token
             db.commit()
             logger.info("User updated and committed.")
 
-        # Redirect to the frontend with the access token
-        return RedirectResponse(f"http://localhost:5173/splitwise-callback?access_token={access_token['oauth_token']}&access_token_secret={access_token['oauth_token_secret']}")
+        # Create a JWT for the user
+        access_token_jwt = create_access_token(data={"sub": str(db_user.id)})
+
+        # Redirect to the frontend with the JWT
+        return RedirectResponse(f"http://localhost:5173/login-success?token={access_token_jwt}")
 
     except Exception as e:
         logger.error(f"--- ERROR in auth_splitwise_callback: {e} ---")

@@ -9,3 +9,5 @@ fastapi-cors
 splitwise
 psycopg2-binary
 SQLAlchemy
+python-jose[cryptography]
+passlib[bcrypt]

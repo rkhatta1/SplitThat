@@ -30,9 +30,13 @@ export default function HomeUpload() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const accessToken = localStorage.getItem("splitwise_access_token");
-        if (accessToken) {
-          const response = await fetch("http://localhost:8000/api/v1/me");
+        const jwt = localStorage.getItem("jwt");
+        if (jwt) {
+          const response = await fetch("http://localhost:8000/api/v1/me", {
+            headers: {
+              "Authorization": `Bearer ${jwt}`
+            }
+          });
           if (response.ok) {
             const userData = await response.json();
             setCurrentUser(userData);
