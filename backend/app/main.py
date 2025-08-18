@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from app.api.endpoints import router as api_router
 from app.api import auth as auth_router
 from app.api import split as split_router
+from app.api import history as history_router
 from fastapi.middleware.cors import CORSMiddleware # New import
 
 app = FastAPI(
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(auth_router.router, prefix="/api/v1")
 app.include_router(split_router.router, prefix="/api/v1")
+app.include_router(history_router.router, prefix="/api/v1")
 
 @app.get("/", tags=["Root"])
 def read_root():

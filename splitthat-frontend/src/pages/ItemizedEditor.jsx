@@ -10,6 +10,7 @@ import { computeTotals } from "../utils/splitting";
 import { cn, money } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
+import ArchivePanel from "../components/ArchivePanel";
 
 export default function ItemizedEditor() {
   const nav = useNavigate();
@@ -20,10 +21,20 @@ export default function ItemizedEditor() {
     distribution,
     setDistribution,
     currentUser,
-    selectedGroup
+    selectedGroup,
+    groups
   } = useSplit();
 
   const [filter, setFilter] = useState("");
+
+  const selectedGroupName = useMemo(() => {
+    if (selectedGroup && groups) {
+      const group = groups.find(g => g.id === parseInt(selectedGroup));
+      return group ? group.name : null;
+    }
+
+    return null;
+  }, [selectedGroup, groups]);
 
   if (!result) {
     return (
@@ -114,6 +125,8 @@ export default function ItemizedEditor() {
     // Construct the users array with correct paid_share and owed_share
     const users = participants.map(p => ({
       user_id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name || null,
       paid_share: p.id === currentUser.splitwise_id ? totals.grandTotal.toFixed(2) : "0.00",
       owed_share: totals.totals[`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`]
     }));
@@ -138,6 +151,10 @@ export default function ItemizedEditor() {
       cost: totals.grandTotal,
       description: "SplitThat Bill", // You can make this dynamic
       users: users,
+      items: result.items,
+      subtotal: totals.subtotal,
+      tax: result.tax,
+      tip: result.tip,
       comment: comment,
       group_id: selectedGroup ? parseInt(selectedGroup) : null
     };
@@ -171,181 +188,184 @@ export default function ItemizedEditor() {
   }
 
   return (
-    <div className="min-h-full">
+    <div className="min-h-full flex flex-col">
       <TopNav />
-      <main className="container py-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-primary/10 px-4 py-3">
-          <div className="font-semibold">
-            Choose split options
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span>Tax:</span>
-            <select
-              value={distribution.tax}
-              onChange={(e) =>
-                setDistribution((d) => ({
-                  ...d,
-                  tax: e.target.value
-                }))
-              }
-              className="rounded border bg-background px-2 py-1"
-            >
-              <option value="equal">Equal</option>
-              <option value="proportional">Proportional</option>
-            </select>
-            <span className="ml-3">Tip:</span>
-            <select
-              value={distribution.tip}
-              onChange={(e) =>
-                setDistribution((d) => ({
-                  ...d,
-                  tip: e.target.value
-                }))
-              }
-              className="rounded border bg-background px-2 py-1"
-            >
-              <option value="equal">Equal</option>
-              <option value="proportional">Proportional</option>
-            </select>
-          </div>
-        </div>
-
-        <Card>
-          <CardContent>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="text-base font-medium">
-                Itemized expense
-              </div>
-              <Input
-                placeholder="Filter items…"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="max-w-xs"
-              />
+      <div className="flex flex-1">
+        <ArchivePanel />
+        <main className="flex-1 container py-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-primary/10 px-4 py-3">
+            <div className="font-semibold">
+              Choose split options
             </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span>Tax:</span>
+              <select
+                value={distribution.tax}
+                onChange={(e) =>
+                  setDistribution((d) => ({
+                    ...d,
+                    tax: e.target.value
+                  }))
+                }
+                className="rounded border bg-background px-2 py-1"
+              >
+                <option value="equal">Equal</option>
+                <option value="proportional">Proportional</option>
+              </select>
+              <span className="ml-3">Tip:</span>
+              <select
+                value={distribution.tip}
+                onChange={(e) =>
+                  setDistribution((d) => ({
+                    ...d,
+                    tip: e.target.value
+                  }))
+                }
+                className="rounded border bg-background px-2 py-1"
+              >
+                <option value="equal">Equal</option>
+                <option value="proportional">Proportional</option>
+              </select>
+            </div>
+          </div>
 
-            <div className="overflow-auto scrollbar-thin">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH className="min-w-[220px]">Item</TH>
-                    <TH className="min-w-[80px]">$</TH>
-                    {participants.map((p) => (
-                      <TH key={p.id} className="text-center">
-                        {`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`}
-                      </TH>
-                    ))}
-                  </TR>
-                </THead>
-                <TBody>
-                  {items.map((it, idx) => {
-                    const globalIdx = result.items.findIndex(
-                      (g) => g.id === it.id
-                    );
-                    return (
-                      <TR key={it.id} className="">
-                        <TD className="">
-                          <Input
-                            className={`${getConfidenceClass(it.confidence)}`}
-                            value={it.item_name || ""}
-                            onChange={(e) =>
-                              updateItem(globalIdx, {
-                                item_name: e.target.value
-                              })
-                            }
-                          />
-                        </TD>
-                        <TD>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={it.price}
-                            onChange={(e) =>
-                              updateItem(globalIdx, {
-                                price: e.target.value
-                              })
-                            }
-                          />
-                        </TD>
-                        {participants.map((p) => (
-                          <TD key={p.id} className="text-center">
-                            <Checkbox
-                              checked={
-                                it.assigned_to?.includes(`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`) || false
-                              }
-                              onChange={() =>
-                                toggleAssign(globalIdx, `${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`)
+          <Card>
+            <CardContent>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="text-base font-medium">
+                  Itemized expense {selectedGroupName && `- ${selectedGroupName}`}
+                </div>
+                <Input
+                  placeholder="Filter items…"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+
+              <div className="overflow-auto scrollbar-thin">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH className="min-w-[220px]">Item</TH>
+                      <TH className="min-w-[80px]">$</TH>
+                      {participants.map((p) => (
+                        <TH key={p.id} className="text-center">
+                          {`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`}
+                        </TH>
+                      ))}
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {items.map((it, idx) => {
+                      const globalIdx = result.items.findIndex(
+                        (g) => g.id === it.id
+                      );
+                      return (
+                        <TR key={it.id} className="">
+                          <TD className="">
+                            <Input
+                              className={`${getConfidenceClass(it.confidence)}`}
+                              value={it.item_name || ""}
+                              onChange={(e) =>
+                                updateItem(globalIdx, {
+                                  item_name: e.target.value
+                                })
                               }
                             />
                           </TD>
-                        ))}
-                      </TR>
-                    );
-                  })}
+                          <TD>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={it.price}
+                              onChange={(e) =>
+                                updateItem(globalIdx, {
+                                  price: e.target.value
+                                })
+                              }
+                            />
+                          </TD>
+                          {participants.map((p) => (
+                            <TD key={p.id} className="text-center">
+                              <Checkbox
+                                checked={
+                                  it.assigned_to?.includes(`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`) || false
+                                }
+                                onChange={() =>
+                                  toggleAssign(globalIdx, `${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`)
+                                }
+                              />
+                            </TD>
+                          ))}
+                        </TR>
+                      );
+                    })}
 
-                  {/* Totals section */}
-                  <TR>
-                    <TD className="text-right font-medium">
-                      Subtotal
-                    </TD>
-                    <TD className="font-medium">
-                      ${totals.subtotal.toFixed(2)}
-                    </TD>
-                    <TD colSpan={participants.length}></TD>
-                  </TR>
-
-                  {result.tax?.amount ? (
+                    {/* Totals section */}
                     <TR>
-                      <TD className="text-right">+ Tax</TD>
-                      <TD>${totals.taxAmount.toFixed(2)}</TD>
-                      <TD colSpan={participants.length}></TD>
-                    </TR>
-                  ) : null}
-
-                  {result.tip?.amount ? (
-                    <TR>
-                      <TD className="text-right">+ Tip</TD>
-                      <TD>${totals.tipAmount.toFixed(2)}</TD>
-                      <TD colSpan={participants.length}></TD>
-                    </TR>
-                  ) : null}
-
-                  <TR>
-                    <TD className="text-right font-semibold">
-                      Grand total
-                    </TD>
-                    <TD className="font-semibold">
-                      ${totals.grandTotal.toFixed(2)}
-                    </TD>
-                    <TD colSpan={participants.length}></TD>
-                  </TR>
-
-                  {/* Per person totals */}
-                  <TR>
-                    <TD className="text-right font-medium">
-                      Per person
-                    </TD>
-                    <TD></TD>
-                    {participants.map((p) => (
-                      <TD key={p.id} className="text-center">
-                        ${money(totals.totals[`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`]).toFixed(2)}
+                      <TD className="text-right font-medium">
+                        Subtotal
                       </TD>
-                    ))}
-                  </TR>
-                </TBody>
-              </Table>
-            </div>
+                      <TD className="font-medium">
+                        ${totals.subtotal.toFixed(2)}
+                      </TD>
+                      <TD colSpan={participants.length}></TD>
+                    </TR>
 
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <Button variant="outline" onClick={() => nav("/")}>
-                Start over
-              </Button>
-              <Button onClick={exportJson}>Export JSON</Button>
-              <Button onClick={publishToSplitwise}>Publish to Splitwise</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
+                    {result.tax?.amount ? (
+                      <TR>
+                        <TD className="text-right">+ Tax</TD>
+                        <TD>${totals.taxAmount.toFixed(2)}</TD>
+                        <TD colSpan={participants.length}></TD>
+                      </TR>
+                    ) : null}
+
+                    {result.tip?.amount ? (
+                      <TR>
+                        <TD className="text-right">+ Tip</TD>
+                        <TD>${totals.tipAmount.toFixed(2)}</TD>
+                        <TD colSpan={participants.length}></TD>
+                      </TR>
+                    ) : null}
+
+                    <TR>
+                      <TD className="text-right font-semibold">
+                        Grand total
+                      </TD>
+                      <TD className="font-semibold">
+                        ${totals.grandTotal.toFixed(2)}
+                      </TD>
+                      <TD colSpan={participants.length}></TD>
+                    </TR>
+
+                    {/* Per person totals */}
+                    <TR>
+                      <TD className="text-right font-medium">
+                        Per person
+                      </TD>
+                      <TD></TD>
+                      {participants.map((p) => (
+                        <TD key={p.id} className="text-center">
+                          ${money(totals.totals[`${p.first_name}${p.last_name ? ` ${p.last_name}` : ''}`]).toFixed(2)}
+                        </TD>
+                      ))}
+                    </TR>
+                  </TBody>
+                </Table>
+              </div>
+
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
+                <Button variant="outline" onClick={() => nav("/")}>
+                  Start over
+                </Button>
+                <Button onClick={exportJson}>Export JSON</Button>
+                <Button onClick={publishToSplitwise}>Publish to Splitwise</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
     </div>
   );
 }
