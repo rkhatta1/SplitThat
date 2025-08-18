@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function ArchivePanel() {
   const [splits, setSplits] = useState([]);
-  const { setResult, setParticipants, setDistribution } = useSplit();
+  const { setResult, setParticipants, setDistribution, setExpenseId } = useSplit();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,9 +50,15 @@ export default function ArchivePanel() {
         const splitData = await response.json();
         console.log("Full splitData from backend:", splitData);
         console.log("splitData.split_data:", splitData.split_data);
+
+        const normalizedParticipants = splitData.split_data.users.map(user => ({
+          ...user,
+          id: user.user_id,
+        }));
         // Populate the context with the split data
         setResult(splitData.split_data);
-        setParticipants(splitData.split_data.users);
+        setParticipants(normalizedParticipants);
+        setExpenseId(splitData.splitwise_expense_id);
         setDistribution({ tax: "equal", tip: "equal" }); // Reset distribution options
         navigate("/editor");
       } else {

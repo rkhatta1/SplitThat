@@ -22,7 +22,8 @@ export default function ItemizedEditor() {
     setDistribution,
     currentUser,
     selectedGroup,
-    groups
+    groups,
+    expenseId
   } = useSplit();
 
   const [filter, setFilter] = useState("");
@@ -156,7 +157,8 @@ export default function ItemizedEditor() {
       tax: result.tax,
       tip: result.tip,
       comment: comment,
-      group_id: selectedGroup ? parseInt(selectedGroup) : null
+      group_id: selectedGroup ? parseInt(selectedGroup) : null,
+      expense_id: expenseId
     };
 
     api.fetch("http://localhost:8000/api/v1/publish-split", {
@@ -281,7 +283,7 @@ export default function ItemizedEditor() {
                               value={it.price}
                               onChange={(e) =>
                                 updateItem(globalIdx, {
-                                  price: e.target.value
+                                  price: parseFloat(e.target.value) || 0
                                 })
                               }
                             />

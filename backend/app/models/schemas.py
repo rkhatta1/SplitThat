@@ -50,6 +50,7 @@ class PublishSplitRequest(BaseModel):
     tip: Optional[Tip] = None
     comment: str
     group_id: Optional[int] = None
+    expense_id: Optional[int] = None
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -58,6 +59,7 @@ class Split(BaseModel):
     id: int
     user_id: int
     split_data: dict
+    splitwise_expense_id: Optional[int] = None
 
     class Config:
         orm_mode = True
