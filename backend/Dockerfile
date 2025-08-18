@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y poppler-utils && rm -rf /var/lib/apt/li
 # Set the working directory in the container
 WORKDIR /app
 
+ENV PYTHONPATH "${PYTHONPATH}:/app"
+ENV PYTHONUNBUFFERED=1
+
 # Copy the dependencies file to the working directory
 COPY ./requirements.txt /app/requirements.txt
 
@@ -22,4 +25,4 @@ EXPOSE 8000
 
 # Run the Uvicorn server
 # The --host 0.0.0.0 flag is crucial to make the server accessible from outside the container
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]

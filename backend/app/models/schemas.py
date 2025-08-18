@@ -6,12 +6,13 @@ class AssigneeList(BaseModel):
     assigned_to: List["str"]
 
 class ItemSplit(BaseModel):
-    """Defines the structure for a single item on the bill."""
+    id: str = Field(..., description="Unique identifier for the item.")
     item_name: str = Field(..., description="Name of the purchased item.")
     price: float = Field(..., description="Price of the item.")
     assigned_to: List["str"] = Field(..., description="List of people assigned to this item.")
     quantity: Optional["str"] = Field(None, description="Quantity of the item, if available.")
     status: Optional[str] = Field("shopped", description="Status of the item, e.g., 'shopped', 'weight-adjusted', 'cancelled'.")
+    confidence: str = Field("medium", description="Confidence level of the item extraction (low, medium, high).")
 
 class Tax(AssigneeList):
     """Defines the structure for tax."""
@@ -31,3 +32,34 @@ class BillSplitResponse(BaseModel):
 ItemSplit.update_forward_refs()
 AssigneeList.update_forward_refs()
 BillSplitResponse.update_forward_refs()
+
+class PublishSplitUser(BaseModel):
+    user_id: int
+    first_name: str
+    last_name: Optional[str] = None
+    paid_share: float
+    owed_share: float
+
+class PublishSplitRequest(BaseModel):
+    cost: float
+    description: str
+    users: List[PublishSplitUser]
+    items: List[ItemSplit]
+    subtotal: float
+    tax: Optional[Tax] = None
+    tip: Optional[Tip] = None
+    comment: str
+    group_id: Optional[int] = None
+    expense_id: Optional[int] = None
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class Split(BaseModel):
+    id: int
+    user_id: int
+    split_data: dict
+    splitwise_expense_id: Optional[int] = None
+
+    class Config:
+        orm_mode = True

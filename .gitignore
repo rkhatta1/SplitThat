@@ -1,2 +1,5 @@
 test/
 .env
+CONTEXT.md
+STEPS.md
+console.log
