@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
 import { useSplit } from "../state/SplitContext";
 import api from "../api/api";
-import ArchivePanel from "../components/ArchivePanel";
+import ArchivePanel from "../components/Sidebar";
 
 export default function HomeUpload() {
   const nav = useNavigate();

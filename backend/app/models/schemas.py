@@ -62,4 +62,4 @@ class Split(BaseModel):
     splitwise_expense_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

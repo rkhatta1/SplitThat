@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import List
+import redis
 from sqlalchemy.orm import Session
 from splitwise import Splitwise
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.cache import get_redis
 from app.models.db_models import Split, User
 from app.api.deps import get_current_user
 from app.models.schemas import PublishSplitRequest
@@ -19,7 +21,8 @@ logger = logging.getLogger(__name__)
 def publish_split(
     request: PublishSplitRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    cache: redis.Redis = Depends(get_redis)
 ):
     """
     Publishes a split to Splitwise.
@@ -67,6 +70,10 @@ def publish_split(
                 db.commit()
                 logger.info(f"Database record for split {db_split.id} updated.")
 
+                cache.delete(f"user:{current_user.id}:splits")
+                cache.delete(f"split:{db_split.id}")
+                logger.info(f"Cache invalidated for user:{current_user.id}:splits and split:{db_split.id}")
+
         else:
             # CREATE new expense
             created_expense, errors = s_obj.createExpense(expense)
@@ -86,6 +93,9 @@ def publish_split(
             db.commit()
             db.refresh(db_split)
             logger.info(f"Split saved to database with ID: {db_split.id}")
+
+            cache.delete(f"user:{current_user.id}:splits")
+            print(f"Cache invalidated for user:{current_user.id}:splits")
         
         # This part runs for both create and update
         s_obj.createComment(expense_id, request.comment)
