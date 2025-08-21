@@ -15,6 +15,7 @@ export function SplitProvider({ children }) {
   const [selectedGroup, setSelectedGroup] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const [expenseId, setExpenseId] = useState(null);
+  const [open, setOpen] = useState(false);
 
   const value = useMemo(
     () => ({
@@ -35,9 +36,11 @@ export function SplitProvider({ children }) {
       currentUser,
       setCurrentUser,
       expenseId,
-      setExpenseId
+      setExpenseId,
+      open,
+      setOpen
     }),
-    [file, participants, userPrompt, result, distribution, groups, selectedGroup, currentUser, expenseId]
+    [file, participants, userPrompt, result, distribution, groups, selectedGroup, currentUser, expenseId, open]
   );
 
   return (

@@ -10,7 +10,8 @@ import { computeTotals } from "../utils/splitting";
 import { cn, money } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
-import ArchivePanel from "../components/Sidebar";
+import SidebarPane from "../components/Sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { MdDelete } from "react-icons/md";
 
 export default function ItemizedEditor() {
@@ -25,6 +26,8 @@ export default function ItemizedEditor() {
     selectedGroup,
     groups,
     expenseId,
+    open,
+    setOpen
   } = useSplit();
 
   const [filter, setFilter] = useState("");
@@ -225,11 +228,12 @@ export default function ItemizedEditor() {
   }
 
   return (
-    <div className="min-h-full flex flex-col">
-      <TopNav />
-      <div className="flex flex-1">
-        <ArchivePanel />
-        <main className="flex-1 container py-6">
+    <div className="max-h-screen flex flex-col overflow-hidden">
+      {/* <TopNav /> */}
+      <div className="flex flex-1 overflow-y-auto">
+        <SidebarProvider>
+        <SidebarPane />
+        <main className="flex-1 container py-6 overflow-y-auto">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-primary/10 px-4 py-3">
             <div className="font-semibold">Choose split options</div>
             <div className="flex items-center gap-2 text-sm">
@@ -427,6 +431,7 @@ export default function ItemizedEditor() {
             </CardContent>
           </Card>
         </main>
+        </SidebarProvider>
       </div>
     </div>
   );

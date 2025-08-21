@@ -15,6 +15,7 @@ from app.core.security import (
 )
 from app.models.schemas import RefreshTokenRequest
 from jose import jwt
+from jose.exceptions import JWTError
 import redis
 import logging
 
@@ -101,14 +102,6 @@ def auth_splitwise_callback(
                 {"id": g.getId(), "name": g.getName(), "members": members_data}
             )
 
-        cache_key = f"user:{db_user.id}:splitwise_data"
-        cached_data = {
-            "friends": friends_data,
-            "groups": groups_data
-        }
-        cache.set(cache_key, json.dumps(cached_data), ex=3600)
-        logger.info(f"Cached Splitwise data for user {db_user.id} in Redis")
-
         if not db_user:
             logger.info("User not found in DB, creating new user...")
             db_user = User(
@@ -116,6 +109,7 @@ def auth_splitwise_callback(
                 email=current_user.getEmail(),
                 first_name=current_user.getFirstName(),
                 last_name=current_user.getLastName(),
+                picture=current_user.getPicture().__dict__,
                 friends=friends_data,
                 groups=groups_data,
                 splitwise_access_token=access_token,
@@ -128,9 +122,18 @@ def auth_splitwise_callback(
             logger.info("User found in DB, updating user...")
             db_user.friends = friends_data
             db_user.groups = groups_data
+            db_user.picture = current_user.getPicture().__dict__
             db_user.splitwise_access_token = access_token
             db.commit()
             logger.info("User updated and committed.")
+
+        cache_key = f"user:{db_user.id}:splitwise_data"
+        cached_data = {
+            "friends": friends_data,
+            "groups": groups_data
+        }
+        cache.set(cache_key, json.dumps(cached_data), ex=3600)
+        logger.info(f"Cached Splitwise data for user {db_user.id} in Redis")
 
         # Create a JWT for the user
         access_token_jwt = create_access_token(data={"sub": str(db_user.id)})

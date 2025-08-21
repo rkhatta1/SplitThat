@@ -63,3 +63,16 @@ class Split(BaseModel):
 
     class Config:
         from_attributes = True
+
+class User(BaseModel):
+    id: int
+    splitwise_id: int
+    email: str
+    first_name: str
+    last_name: Optional[str] = None
+    picture: Optional[dict] = None
+    groups: Optional[list] = None
+    friends: Optional[list] = None
+
+    class Config:
+        from_attributes = True

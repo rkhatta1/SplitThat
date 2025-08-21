@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.services.bill_parser import MultimodalBillParser, get_multimodal_parser
-from app.models.schemas import BillSplitResponse
+from app.models.schemas import BillSplitResponse, User as UserSchema
 from app.core.database import get_db
 from app.models.db_models import Split, User
 from app.api.deps import get_current_user
@@ -59,7 +59,7 @@ async def split_bill_endpoint(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
-@router.get("/me")
+@router.get("/me", response_model=UserSchema)
 def get_current_user_data(current_user: User = Depends(get_current_user)):
     """
     Returns the current user's data from the database.

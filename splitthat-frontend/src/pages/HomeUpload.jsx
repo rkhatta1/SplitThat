@@ -8,7 +8,9 @@ import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
 import { useSplit } from "../state/SplitContext";
 import api from "../api/api";
-import ArchivePanel from "../components/Sidebar";
+import SidebarPane from "../components/Sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { Sidebar } from "lucide-react";
 
 export default function HomeUpload() {
   const nav = useNavigate();
@@ -24,7 +26,9 @@ export default function HomeUpload() {
     selectedGroup,
     setSelectedGroup,
     setCurrentUser,
-    currentUser
+    currentUser,
+    open,
+    setOpen
   } = useSplit();
 
   const [error, setError] = useState("");
@@ -106,9 +110,10 @@ export default function HomeUpload() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <TopNav />
+      {/* <TopNav /> */}
       <div className="flex flex-1">
-        <ArchivePanel />
+    <SidebarProvider>
+        <SidebarPane />
         <main className="flex-1 container py-8">
           <div className="mx-auto max-w-3xl">
             <Card>
@@ -116,9 +121,7 @@ export default function HomeUpload() {
                 <h1 className="text-xl font-semibold">
                   Itemized split from a receipt
                 </h1>
-                <a href="http://localhost:8000/api/v1/auth/splitwise">
-                  <Button>Login with Splitwise</Button>
-                </a>
+                
                 <p className="mt-1 text-sm text-muted-foreground">
                   Upload a photo or PDF, add people, and optionally give
                   instructions. We’ll parse the receipt and pre-fill the
@@ -184,6 +187,7 @@ export default function HomeUpload() {
             </Card>
           </div>
         </main>
+    </SidebarProvider>
       </div>
     </div>
   );
