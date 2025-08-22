@@ -287,10 +287,10 @@ export default function ItemizedEditor() {
                 <Table>
                   <THead>
                     <TR>
-                      <TH className="min-w-[220px]">Item</TH>
-                      <TH className="min-w-[80px]">$</TH>
+                      <TH className="min-w-[220px] text-left">Item</TH>
+                      <TH className="min-w-[80px] text-left">$</TH>
                       {participants.map((p) => (
-                        <TH key={p.id} className="text-center">
+                        <TH key={p.id}>
                           {`${p.first_name}${p.last_name ? ` ${p.last_name}` : ""}`}
                         </TH>
                       ))}
@@ -347,7 +347,7 @@ export default function ItemizedEditor() {
                             />
                           </TD>
                           {participants.map((p) => (
-                            <TD key={p.id} className="text-center">
+                            <TD key={p.id} className="text-center items-center justify-center">
                               <Checkbox
                                 checked={
                                   it.assigned_to?.includes(

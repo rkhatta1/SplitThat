@@ -22,7 +22,7 @@ export function TH({ className = "", children }) {
   return (
     <th
       className={
-        "sticky top-0 z-10 whitespace-nowrap px-3 py-2 text-left " +
+        "sticky top-0 z-10 whitespace-nowrap px-3 py-2 " +
         "text-sm font-semibold " +
         className
       }
@@ -34,7 +34,7 @@ export function TH({ className = "", children }) {
 
 export function TD({ className = "", children }) {
   return (
-    <td className={"px-3 py-2 align-top text-sm " + className}>
+    <td className={"px-3 py-2 text-sm " + className}>
       {children}
     </td>
   );

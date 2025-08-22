@@ -5,7 +5,7 @@ export function Checkbox({ className, ...props }) {
     <input
       type="checkbox"
       className={cn(
-        "h-4 w-4 rounded border border-input " +
+        "h-[1rem] w-[1rem] rounded border border-input " +
           "text-primary focus:ring-2 focus:ring-ring",
         className
       )}

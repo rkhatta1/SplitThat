@@ -112,25 +112,26 @@ export default function SidebarPane({ className }) {
           <SidebarGroupContent>
             <SidebarMenu>
               <div className="space-y-1">
-                <ul>
+                <ul className="flex flex-col">
                   {splits.map((split) => (
                     <li
                       key={split.id}
-                      className="py-1 flex justify-between items-center"
+                      className="p-1 flex justify-between items-center space-x-2"
                     >
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className="max-w-3/4 flex flex-1 px-2 bg-gray-200 justify-start hover:bg-gray-300"
                         onClick={() => editSplit(split.id)}
                       >
-                        {open && <span>Split #{split.id}</span>}
+                        {currentUser && <span>Split #{split.id}</span>}
                       </Button>
                       <Button
-                        variant="ghost"
-                        size="sm"
+                      className={"bg-red-400 hover:bg-red-500 text-white"}
+                        // variant="ghost"
+                        // size="sm"
                         onClick={() => deleteSplit(split.id)}
                       >
-                        {open && <span>Delete</span>}
+                        {currentUser && <span>Delete</span>}
                       </Button>
                     </li>
                   ))}
