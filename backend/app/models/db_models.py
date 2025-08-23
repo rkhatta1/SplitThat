@@ -12,6 +12,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     first_name = Column(String)
     last_name = Column(String)
+    picture = Column(JSON)
     # Storing groups and friends as JSON for simplicity
     groups = Column(JSON)
     friends = Column(JSON)

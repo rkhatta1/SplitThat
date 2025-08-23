@@ -1,13 +1,22 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from splitwise import Splitwise
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.cache import get_redis
 from app.models.db_models import User
-from app.core.security import create_access_token, create_refresh_token, get_hashed_token, verify_token_hash
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    get_hashed_token,
+    verify_token_hash,
+)
 from app.models.schemas import RefreshTokenRequest
 from jose import jwt
+from jose.exceptions import JWTError
+import redis
 import logging
 
 print("--- auth.py module is being imported ---")
@@ -25,6 +34,7 @@ s_obj = Splitwise(
     consumer_secret=settings.splitwise_consumer_secret,
 )
 
+
 @router.get("/auth/splitwise")
 def auth_splitwise():
     """
@@ -34,14 +44,20 @@ def auth_splitwise():
     # Store the secret in a secure way (e.g., session, database)
     # For now, we'll just pass it to the callback URL for simplicity in this example
     # In a real application, you should use a more secure method.
-    temp_secret_storage['secret'] = secret
+    temp_secret_storage["secret"] = secret
     return RedirectResponse(auth_url)
 
+
 @router.get("/auth/splitwise/callback")
-def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session = Depends(get_db)):
+def auth_splitwise_callback(
+    oauth_token: str,
+    oauth_verifier: str,
+    db: Session = Depends(get_db),
+    cache: redis.Redis = Depends(get_redis)
+):
     logger.info("--- In auth_splitwise_callback ---")
     try:
-        secret = temp_secret_storage.get('secret')
+        secret = temp_secret_storage.get("secret")
         if not secret:
             raise HTTPException(status_code=400, detail="Could not find secret")
 
@@ -61,12 +77,30 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
         db_user = db.query(User).filter(User.splitwise_id == user_id).first()
         logger.info(f"User found in DB: {db_user is not None}")
 
-        friends_data = [{"id": f.getId(), "first_name": f.getFirstName(), "last_name": f.getLastName(), "email": f.getEmail()} for f in friends]
+        friends_data = [
+            {
+                "id": f.getId(),
+                "first_name": f.getFirstName(),
+                "last_name": f.getLastName(),
+                "email": f.getEmail(),
+            }
+            for f in friends
+        ]
         groups_data = []
         for g in groups:
             members = g.getMembers()
-            members_data = [{"id": m.getId(), "first_name": m.getFirstName(), "last_name": m.getLastName(), "email": m.getEmail()} for m in members]
-            groups_data.append({"id": g.getId(), "name": g.getName(), "members": members_data})
+            members_data = [
+                {
+                    "id": m.getId(),
+                    "first_name": m.getFirstName(),
+                    "last_name": m.getLastName(),
+                    "email": m.getEmail(),
+                }
+                for m in members
+            ]
+            groups_data.append(
+                {"id": g.getId(), "name": g.getName(), "members": members_data}
+            )
 
         if not db_user:
             logger.info("User not found in DB, creating new user...")
@@ -75,9 +109,10 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
                 email=current_user.getEmail(),
                 first_name=current_user.getFirstName(),
                 last_name=current_user.getLastName(),
+                picture=current_user.getPicture().__dict__,
                 friends=friends_data,
                 groups=groups_data,
-                splitwise_access_token=access_token
+                splitwise_access_token=access_token,
             )
             db.add(db_user)
             db.commit()
@@ -87,9 +122,18 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
             logger.info("User found in DB, updating user...")
             db_user.friends = friends_data
             db_user.groups = groups_data
+            db_user.picture = current_user.getPicture().__dict__
             db_user.splitwise_access_token = access_token
             db.commit()
             logger.info("User updated and committed.")
+
+        cache_key = f"user:{db_user.id}:splitwise_data"
+        cached_data = {
+            "friends": friends_data,
+            "groups": groups_data
+        }
+        cache.set(cache_key, json.dumps(cached_data), ex=3600)
+        logger.info(f"Cached Splitwise data for user {db_user.id} in Redis")
 
         # Create a JWT for the user
         access_token_jwt = create_access_token(data={"sub": str(db_user.id)})
@@ -100,7 +144,9 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
         db.commit()
 
         # Redirect to the frontend with the JWTs
-        return RedirectResponse(f"http://localhost:5173/login-success?token={access_token_jwt}&refresh_token={refresh_token_jwt}")
+        return RedirectResponse(
+            f"http://localhost:5173/login-success?token={access_token_jwt}&refresh_token={refresh_token_jwt}"
+        )
 
     except Exception as e:
         logger.error(f"--- ERROR in auth_splitwise_callback: {e} ---")
@@ -109,13 +155,18 @@ def auth_splitwise_callback(oauth_token: str, oauth_verifier: str, db: Session =
             detail=f"Could not authenticate with Splitwise: {e}",
         )
 
+
 @router.post("/auth/refresh-token")
 def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """
     Refreshes the access token.
     """
     try:
-        payload = jwt.decode(request.refresh_token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            request.refresh_token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
 

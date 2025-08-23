@@ -24,6 +24,8 @@ class Tip(AssigneeList):
 
 class BillSplitResponse(BaseModel):
     """The final JSON response structure from our API."""
+    shop_name: str = Field(..., description="Name of the shop or place of purchase.")
+    date_of_purchase: str = Field(..., description="Date of the purchase.")
     items: List["ItemSplit"]
     tax: Optional["Tax"] = Field(None, description="Details for tax, if found.")
     tip: Optional["Tip"] = Field(None, description="Details for tip, if found.")
@@ -51,6 +53,10 @@ class PublishSplitRequest(BaseModel):
     comment: str
     group_id: Optional[int] = None
     expense_id: Optional[int] = None
+    title: str
+    date_of_purchase: str
+    shop_name: str
+    distribution: dict
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -62,4 +68,17 @@ class Split(BaseModel):
     splitwise_expense_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+class User(BaseModel):
+    id: int
+    splitwise_id: int
+    email: str
+    first_name: str
+    last_name: Optional[str] = None
+    picture: Optional[dict] = None
+    groups: Optional[list] = None
+    friends: Optional[list] = None
+
+    class Config:
+        from_attributes = True

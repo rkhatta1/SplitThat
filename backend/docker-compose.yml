@@ -11,6 +11,15 @@ services:
     ports:
       - "5432:5432"
 
+  cache:
+    image: redis:8.2.1-alpine
+    container_name: splitthat_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - cache_data:/data
+
   backend:
     build: .
     container_name: splitthat_backend
@@ -23,3 +32,4 @@ services:
 
 volumes:
   postgres_data:
+  cache_data:

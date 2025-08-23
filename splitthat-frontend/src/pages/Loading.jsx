@@ -25,7 +25,7 @@ export default function Loading() {
 
   return (
     <div className="min-h-full">
-      <TopNav />
+      {/* <TopNav /> */}
       <main className="container flex flex-col items-center gap-4 py-16">
         <Spinner size={56} />
         <h1 className="text-xl font-semibold">

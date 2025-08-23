@@ -11,12 +11,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+origins = [
+    "http://localhost:5173",  # Allow your frontend origin
+    "https://splitthat.tech",  # Replace with your actual frontend domain
+]
 # New CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Allow your frontend origin
+    allow_origins=origins, # Allow your frontend origin
     allow_credentials=True,
-    allow_methods=["*"], # Allow all methods (GET, POST, etc.)
+    allow_methods=["GET", "POST", "PUT", "DELETE"], # Allow all methods (GET, POST, etc.)
     allow_headers=["*"], # Allow all headers
 )
 
@@ -28,4 +32,4 @@ app.include_router(history_router.router, prefix="/api/v1")
 
 @app.get("/", tags=["Root"])
 def read_root():
-    return {"message": "Welcome to the Splitwise Helper AI API!"}
+    return {"message": "Welcome to the Splitwise Helper AI!"}

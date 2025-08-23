@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     splitwise_consumer_key: str
     splitwise_consumer_secret: str
     database_url: str
+    redis_url: str = "redis://cache:6379"
     jwt_secret_key: str
     jwt_algorithm: str
 
