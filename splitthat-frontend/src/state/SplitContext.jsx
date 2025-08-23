@@ -16,6 +16,11 @@ export function SplitProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [expenseId, setExpenseId] = useState(null);
   const [open, setOpen] = useState(false);
+  const [currentSplit, setCurrentSplit] = useState(null);
+  const [refreshSplits, setRefreshSplits] = useState(0);
+  const [shopName, setShopName] = useState("");
+  const [paidBy, setPaidBy] = useState(null);
+  const [dateOfPurchase, setDateOfPurchase] = useState("");
 
   const value = useMemo(
     () => ({
@@ -38,9 +43,19 @@ export function SplitProvider({ children }) {
       expenseId,
       setExpenseId,
       open,
-      setOpen
+      setOpen,
+      currentSplit,
+      setCurrentSplit,
+      refreshSplits,
+      setRefreshSplits,
+      shopName,
+      setShopName,
+      paidBy,
+      setPaidBy,
+      dateOfPurchase,
+      setDateOfPurchase
     }),
-    [file, participants, userPrompt, result, distribution, groups, selectedGroup, currentUser, expenseId, open]
+    [file, participants, userPrompt, result, distribution, groups, selectedGroup, currentUser, expenseId, open, currentSplit, refreshSplits, shopName, paidBy, dateOfPurchase]
   );
 
   return (

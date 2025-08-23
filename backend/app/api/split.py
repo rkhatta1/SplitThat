@@ -39,6 +39,7 @@ def publish_split(
         expense = Expense()
         expense.setCost(str(request.cost))
         expense.setDescription(request.description)
+        expense.setDate(request.date_of_purchase)
 
         users = []
         for user_data in request.users:

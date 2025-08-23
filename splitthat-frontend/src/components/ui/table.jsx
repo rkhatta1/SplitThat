@@ -1,13 +1,17 @@
 export function Table({ children }) {
   return (
-    <table className="w-full border-separate border-spacing-0">
-      {children}
-    </table>
+    <div className="relative border rounded-lg overflow-hidden">
+      <div className="overflow-auto h-full">
+        <table className="w-full">
+          {children}
+        </table>
+      </div>
+    </div>
   );
 }
 
 export function THead({ children }) {
-  return <thead className="bg-secondary">{children}</thead>;
+  return <thead>{children}</thead>;
 }
 
 export function TBody({ children }) {
@@ -22,8 +26,9 @@ export function TH({ className = "", children }) {
   return (
     <th
       className={
-        "sticky top-0 z-10 whitespace-nowrap px-3 py-2 " +
-        "text-sm font-semibold " +
+        "sticky top-0 z-20 whitespace-nowrap px-3 py-2 " +
+        "text-sm font-semibold bg-secondary/95 backdrop-blur-sm " +
+        "border-b border-border " +
         className
       }
     >
@@ -34,7 +39,7 @@ export function TH({ className = "", children }) {
 
 export function TD({ className = "", children }) {
   return (
-    <td className={"px-3 py-2 text-sm " + className}>
+    <td className={"px-3 py-2 text-sm bg-background " + className}>
       {children}
     </td>
   );

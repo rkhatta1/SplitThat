@@ -27,14 +27,20 @@ export default function SidebarPane({ className }) {
     setParticipants,
     setDistribution,
     setExpenseId,
+    setSelectedGroup,
+    setShopName,
+    setPaidBy,
+    setDateOfPurchase,
     currentUser,
-    open
+    open,
+    currentSplit,
+    refreshSplits
   } = useSplit();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchSplits();
-  }, []);
+  }, [refreshSplits]);
 
   async function fetchSplits() {
     try {
@@ -89,7 +95,14 @@ export default function SidebarPane({ className }) {
         setResult(splitData.split_data);
         setParticipants(normalizedParticipants);
         setExpenseId(splitData.splitwise_expense_id);
-        setDistribution({ tax: "equal", tip: "equal" }); // Reset distribution options
+        setDistribution(splitData.split_data.distribution || { tax: "equal", tip: "equal" });
+        setSelectedGroup(splitData.split_data.group_id);
+        setShopName(splitData.split_data.shop_name || "Los Pollos Hermanos");
+        const paidByUser = splitData.split_data.users.find(user => user.paid_share > 0);
+        if (paidByUser) {
+          setPaidBy(paidByUser.user_id);
+        }
+        setDateOfPurchase(splitData.split_data.date_of_purchase);
         navigate("/editor");
       } else {
         alert("Failed to load split data.");
@@ -113,6 +126,26 @@ export default function SidebarPane({ className }) {
             <SidebarMenu>
               <div className="space-y-1">
                 <ul className="flex flex-col">
+                  {currentSplit && currentSplit.status === 'processing' && (
+                    <li className="p-1 flex justify-between items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        className="max-w-3/4 flex flex-1 px-2 bg-gray-200 justify-start hover:bg-gray-300"
+                      >
+                        <span>Processing...</span>
+                      </Button>
+                    </li>
+                  )}
+                  {currentSplit && currentSplit.status === 'editing' && (
+                    <li className="p-1 flex justify-between items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        className="max-w-full flex flex-1 px-2 bg-gray-200 justify-start hover:bg-gray-300"
+                      >
+                        <span>{currentSplit.data.shop_name} - {currentSplit.data.date_of_purchase}</span>
+                      </Button>
+                    </li>
+                  )}
                   {splits.map((split) => (
                     <li
                       key={split.id}
@@ -120,10 +153,10 @@ export default function SidebarPane({ className }) {
                     >
                       <Button
                         variant="ghost"
-                        className="max-w-3/4 flex flex-1 px-2 bg-gray-200 justify-start hover:bg-gray-300"
+                        className="max-w-3/4 scrollbar-none overflow-auto flex flex-1 px-2 bg-gray-200 justify-start hover:bg-gray-300"
                         onClick={() => editSplit(split.id)}
                       >
-                        {currentUser && <span>Split #{split.id}</span>}
+                        {currentUser && <span>{split.split_data.title}</span>}
                       </Button>
                       <Button
                       className={"bg-red-400 hover:bg-red-500 text-white"}
@@ -153,7 +186,7 @@ export default function SidebarPane({ className }) {
         ) : (
           <a href="http://localhost:8000/api/v1/auth/splitwise">
             <Button className="w-full">
-              {open && <span>Login with Splitwise</span>}
+              <span>Login with Splitwise</span>
             </Button>
           </a>
         )}

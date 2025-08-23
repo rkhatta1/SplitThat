@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import TopNav from "../components/TopNav";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -27,10 +27,34 @@ export default function ItemizedEditor() {
     groups,
     expenseId,
     open,
-    setOpen
+    setOpen,
+    setCurrentSplit,
+    setRefreshSplits,
+    shopName,
+    setShopName,
+    paidBy,
+    setPaidBy,
+    dateOfPurchase,
+    setDateOfPurchase
   } = useSplit();
 
   const [filter, setFilter] = useState("");
+  
+  
+
+  useEffect(() => {
+    if (result && shopName === "") {
+      setShopName(result.shop_name || "Los Pollos Hermanos");
+    } else if (result && dateOfPurchase === "") {
+      setDateOfPurchase(result.date_of_purchase || "");
+    }
+  }, [result, shopName, dateOfPurchase]);
+
+  useEffect(() => {
+    if (currentUser && paidBy === null) {
+      setPaidBy(currentUser.splitwise_id);
+    }
+  }, [currentUser, paidBy]);
 
   const selectedGroupName = useMemo(() => {
     if (selectedGroup && groups) {
@@ -43,9 +67,9 @@ export default function ItemizedEditor() {
 
   if (!result) {
     return (
-      <div className="min-h-full">
-        <TopNav />
-        <main className="container py-8">
+      <div className="min-h-full flex items-center justify-center">
+        {/* <TopNav /> */}
+        <main className="container py-8 w-full flex flex-col items-center">
           <p className="text-sm">No data. Go back to upload.</p>
           <Button className="mt-4" onClick={() => nav("/")}>
             Back to upload
@@ -158,7 +182,7 @@ export default function ItemizedEditor() {
       first_name: p.first_name,
       last_name: p.last_name || null,
       paid_share:
-        p.id === currentUser.splitwise_id
+        p.id === paidBy
           ? totals.grandTotal.toFixed(2)
           : "0.00",
       owed_share:
@@ -185,9 +209,10 @@ export default function ItemizedEditor() {
     });
 
     // Construct the request body
+    const title = `${shopName} - ${dateOfPurchase}`;
     const requestBody = {
       cost: totals.grandTotal,
-      description: "SplitThat Bill", // You can make this dynamic
+      description: title, 
       users: users,
       items: result.items,
       subtotal: totals.subtotal,
@@ -196,7 +221,13 @@ export default function ItemizedEditor() {
       comment: comment,
       group_id: selectedGroup ? parseInt(selectedGroup) : null,
       expense_id: expenseId,
+      title: title,
+      distribution: distribution,
+      date_of_purchase: dateOfPurchase,
+      shop_name: shopName,
     };
+
+    console.log("Request Body:", requestBody);
 
     api
       .fetch("http://localhost:8000/api/v1/publish-split", {
@@ -206,6 +237,8 @@ export default function ItemizedEditor() {
       .then((response) => {
         if (response.ok) {
           alert("Split published successfully!");
+          setCurrentSplit(null);
+          setRefreshSplits(c => c + 1);
         } else {
           alert("Failed to publish split.");
         }
@@ -233,8 +266,8 @@ export default function ItemizedEditor() {
       <div className="flex flex-1 overflow-y-auto">
         <SidebarProvider>
         <SidebarPane />
-        <main className="flex-1 container py-6 overflow-y-auto">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-primary/10 px-4 py-3">
+        <main className="flex-1 container py-6 overflow-y-auto flex flex-col max-h-screen">
+          <div className="mb-4 h-1/15 flex flex-wrap items-center justify-between gap-3 rounded-md bg-primary/10 px-4 py-3">
             <div className="font-semibold">Choose split options</div>
             <div className="flex items-center gap-2 text-sm">
               <span>Tax:</span>
@@ -268,8 +301,8 @@ export default function ItemizedEditor() {
             </div>
           </div>
 
-          <Card>
-            <CardContent>
+          <Card className={"flex-1 overflow-hidden"}>
+            <CardContent className={"justify-between flex flex-col h-full"}>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="text-base font-medium">
                   Itemized expense{" "}
@@ -283,7 +316,32 @@ export default function ItemizedEditor() {
                 />
               </div>
 
-              <div className="overflow-auto scrollbar-thin">
+              <div className="flex items-center gap-4 mb-4">
+                <Input
+                  placeholder="Shop Name"
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
+                  className="max-w-xs"
+                />
+                <Input
+                  type="date"
+                  value={dateOfPurchase}
+                  onChange={(e) => setDateOfPurchase(e.target.value)}
+                  className="max-w-xs"
+                />
+                <select
+                  value={paidBy}
+                  onChange={(e) => setPaidBy(parseInt(e.target.value))}
+                  className="rounded border bg-background px-2 py-1 max-w-xs"
+                >
+                  {participants.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.first_name} {p.last_name || ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
                 <Table>
                   <THead>
                     <TR>
@@ -417,7 +475,6 @@ export default function ItemizedEditor() {
                     </TR>
                   </TBody>
                 </Table>
-              </div>
 
               <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <Button variant="outline" onClick={() => nav("/")}>

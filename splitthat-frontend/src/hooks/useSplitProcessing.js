@@ -3,7 +3,7 @@ import { splitBill } from "../api/client";
 import { useSplit } from "../state/SplitContext";
 
 export function useSplitProcessing() {
-  const { setResult } = useSplit();
+  const { setResult, setCurrentSplit, setDistribution } = useSplit();
   const [error, setError] = useState(null);
   const [status, setStatus] = useState("idle");
   const abortRef = useRef(null);
@@ -11,6 +11,8 @@ export function useSplitProcessing() {
   const run = useCallback(async ({ file, participants, prompt }) => {
     setError(null);
     setStatus("loading");
+    setCurrentSplit({ status: "processing" });
+    setDistribution({ tax: "equal", tip: "equal" });
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -26,7 +28,7 @@ export function useSplitProcessing() {
       console.log("Data from backend:", data);
       // Ensure items array exists
       const items = Array.isArray(data.items) ? data.items : [];
-      setResult({
+      const result = {
         ...data,
         items: items.map((it, idx) => ({
           id: `${idx}-${it.item_name ?? "item"}`,
@@ -35,7 +37,9 @@ export function useSplitProcessing() {
             ? it.assigned_to
             : participantNames
         }))
-      });
+      };
+      setResult(result);
+      setCurrentSplit({ status: "editing", data: result });
       setStatus("done");
       return true;
     } catch (e) {
