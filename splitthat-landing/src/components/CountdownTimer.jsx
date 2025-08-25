@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 
 function CountdownTimer() {
   // Set the target date 4 days from now
-  const targetDate = new Date();
-  targetDate.setDate(targetDate.getDate() + 4);
+  const targetDate = new Date("2025-08-28T18:00:00Z");
 
   // Function to calculate time remaining
   const calculateTimeRemaining = () => {

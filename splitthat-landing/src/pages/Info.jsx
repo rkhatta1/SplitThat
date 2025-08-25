@@ -11,7 +11,7 @@ function Info() {
   return (
     <div className="grandParent overflow-hidden w-full relative z-10 pb-[5rem] flex text-gray-100 items-center justify-center bg-gray-900">
       <div className="parent max-w-3/4 relative z-15 flex-1 flex flex-col py-[10rem] items-center justify-start">
-        <div className="sibling flex flex-col space-y-1 max-w-2/3 justify-center">
+        <div className="sibling flex flex-col space-y-1 max-w-5/7 justify-center">
           <div className="text-center flex justify-center font-poppins font-medium text-[2rem]">
             <span>The smartest and fastest way to split your bills</span>
           </div>
