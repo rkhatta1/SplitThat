@@ -1,71 +1,82 @@
-"use client";
+import {
+  Navbar,
+  Hero,
+  FeatureHighlight,
+  BentoGrid,
+  StatsSection,
+  Footer,
+  AppMockup,
+  MathMockup,
+} from "@/components/landing";
+import Link from "next/link";
 
-import { useSession } from "@/lib/auth-client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { UserGroupIcon, UserIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-
-export default function DashboardPage() {
-  const { data: session, isPending } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isPending && !session) {
-      router.push("/login");
-    }
-  }, [session, isPending, router]);
-
-  if (isPending) return <div className="p-8">Loading...</div>;
-  if (!session) return null;
-
+export default function LandingPage() {
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {session.user.name}</p>
-      </div>
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 selection:text-primary-foreground overflow-x-hidden dark no-scrollbar">
+      <Navbar />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
-            <HugeiconsIcon icon={Wallet01Icon} size={18} className="text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$0.00</div>
-            <p className="text-xs text-muted-foreground">Calculated from Splitwise</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Groups</CardTitle>
-            <HugeiconsIcon icon={UserGroupIcon} size={18} className="text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Groups in Splitwise</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Friends</CardTitle>
-            <HugeiconsIcon icon={UserIcon} size={18} className="text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Connected friends</p>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="rounded-xl border bg-card text-card-foreground shadow p-8 text-center space-y-4">
-        <h2 className="text-xl font-semibold">Ready to split?</h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Click the "New Split" button at the top to create a manual expense or upload a receipt for AI-powered itemization.
-        </p>
-      </div>
+      <main>
+        {/* Hero includes the dark header and the white video section */}
+        <Hero />
+
+        {/* Feature 1 - Dark Theme (Flows from dark bottom of Hero) */}
+        <FeatureHighlight
+          id="how-it-works"
+          title="Extract. Assign. Done."
+          description="Simply upload a photo of your receipt. Our AI identifies every line item, price, and modifier. Then, effortlessly assign items to friends with a tap."
+          features={[
+            "Instant OCR with Gemini 3 Flash",
+            "Auto-detection of tax and gratuity",
+            "Smart suggestion based on past splits",
+          ]}
+          imageSrc="/feature.png"
+          imageAlt="AI scanning a receipt"
+          theme="dark"
+          customVisual={<AppMockup />}
+          backgroundImage="/feature.png"
+        />
+
+        {/* Stats - Dark Theme */}
+        <StatsSection />
+
+        {/* Feature 2 - Light Theme */}
+        <FeatureHighlight
+          title="Fairness, mathematically guaranteed."
+          description="We calculate tax and tip proportionally based on the subtotal of items each person claimed. No more overpaying for someone else's expensive drink."
+          features={[
+            "Proportional tax distribution",
+            "Weighted tip calculation",
+            "Transparent breakdown for everyone",
+          ]}
+          imageSrc="/math.png"
+          imageAlt="Expense breakdown visualization"
+          reversed={true}
+          theme="light"
+          customVisual={<MathMockup />}
+          backgroundImage="/math.png"
+        />
+
+        {/* Bento - Dark Theme */}
+        <BentoGrid />
+
+        {/* CTA Section - White Theme to transition to Footer */}
+        <section className="py-32 bg-white relative overflow-hidden">
+          <div className="container mx-auto px-6 text-center relative z-10">
+            <h2 className="font-serif text-5xl md:text-7xl mb-8 text-slate-900">Ready to split that?</h2>
+            <p className="text-xl text-gray-500 mb-12 max-w-2xl mx-auto font-light">
+              Join users who have stopped doing napkin math at dinner.
+            </p>
+            <Link
+              href="/app"
+              className="bg-primary hover:bg-primary/90 text-white px-10 py-5 text-lg font-medium transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1 inline-block"
+            >
+              Launch Application
+            </Link>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
     </div>
   );
 }

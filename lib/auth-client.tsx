@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
-      window.location.href = "/login";
+      window.location.href = "/";
     } catch (error) {
       console.error("Logout failed:", error);
     }

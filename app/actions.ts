@@ -50,6 +50,21 @@ export async function getSplitwiseData() {
   }
 }
 
+// User share for itemized splits
+export interface UserShare {
+  odId: string; // Splitwise user ID
+  name: string;
+  owedShare: number; // Amount this user owes
+  paidShare: number; // Amount this user paid (usually 0 except for the payer)
+}
+
+// Item for storing in database
+export interface SplitItem {
+  name: string;
+  amount: number;
+  assignedTo: string[]; // User IDs
+}
+
 export async function createSplit(params: {
   description: string;
   amount: number;
@@ -57,6 +72,12 @@ export async function createSplit(params: {
   groupId?: string;
   details?: string;
   type: "manual" | "auto";
+  // For itemized splits
+  userShares?: UserShare[];
+  items?: SplitItem[];
+  tax?: number;
+  tip?: number;
+  payerId?: string; // Who paid the bill (current user by default)
 }) {
   const session = await getSession();
   if (!session) throw new Error("Not authenticated");
@@ -69,18 +90,38 @@ export async function createSplit(params: {
   const sw = getSplitwiseClient(token);
 
   try {
-    const res = await sw.expenses.createExpense({
-      cost: params.amount.toString(),
+    // Build the expense params
+    const expenseParams: Record<string, any> = {
+      cost: params.amount.toFixed(2),
       description: params.description,
       date: params.date,
       group_id: params.groupId ? parseInt(params.groupId) : undefined,
       details: params.details,
-      split_equally: true,
-    });
+    };
+
+    // If we have user shares, use them instead of split_equally
+    if (params.userShares && params.userShares.length > 0) {
+      // Add each user's share with indexed keys
+      params.userShares.forEach((share, index) => {
+        expenseParams[`users__${index}__user_id`] = parseInt(share.odId);
+        expenseParams[`users__${index}__paid_share`] = share.paidShare.toFixed(2);
+        expenseParams[`users__${index}__owed_share`] = share.owedShare.toFixed(2);
+      });
+    } else {
+      // Fall back to equal split
+      expenseParams.split_equally = true;
+    }
+
+    const res = await sw.expenses.createExpense(expenseParams);
 
     const expenseId = (res as any)?.expenses?.[0]?.id?.toString();
 
-    // Save to Convex
+    // Extract participant IDs from userShares (all Splitwise user IDs involved)
+    const participants = params.userShares
+      ? params.userShares.map((share) => share.odId)
+      : undefined;
+
+    // Save to Convex with detailed breakdown
     await convex.mutation(api.splits.saveSplit, {
       userId: session.user._id,
       amount: params.amount,
@@ -90,6 +131,11 @@ export async function createSplit(params: {
       status: "synced",
       groupId: params.groupId,
       splitwiseId: expenseId,
+      items: params.items ? JSON.stringify(params.items) : undefined,
+      userShares: params.userShares ? JSON.stringify(params.userShares) : undefined,
+      tax: params.tax,
+      tip: params.tip,
+      participants,
     });
 
     return res;

@@ -1,0 +1,9 @@
+export { Navbar } from "./Navbar";
+export { Hero } from "./Hero";
+export { FeatureHighlight } from "./FeatureHighlight";
+export { BentoGrid } from "./BentoGrid";
+export { StatsSection } from "./StatsSection";
+export { Footer } from "./Footer";
+export { AppMockup } from "./AppMockup";
+export { MathMockup } from "./MathMockup";
+export { Logo } from "./Logo";
