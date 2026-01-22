@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SplitThat
 
-## Getting Started
+**Split bills. Not friendships.**
 
-First, run the development server:
+An AI-powered expense splitting app that makes dividing costs as easy as snapping a photo. Powered by Gemini 3 Flash and integrated with Splitwise.
+
+## What it does
+
+1. **Snap a receipt** - Upload any receipt image
+2. **AI does the math** - Gemini extracts and itemizes everything
+3. **Assign items** - Tap who had what
+4. **Publish to Splitwise** - Done. No more "you owe me" texts.
+
+## Features
+
+- **AI Receipt Scanning** - Gemini 3 Flash extracts items, prices, tax, and tip
+- **Itemized Splitting** - Assign individual items to specific people
+- **Manual Splits** - For when you just need to split something quickly
+- **Splitwise Sync** - Seamlessly push expenses to your Splitwise account
+- **Group Support** - Split with your roommates, trip buddies, or dinner crew
+
+## Tech Stack
+
+- **Next.js 16** - App Router + TypeScript
+- **Convex** - Real-time database
+- **Google Gemini** - AI-powered receipt parsing
+- **Splitwise API** - Expense management
+- **Tailwind + shadcn/ui** - Clean, responsive UI
+
+## Local dev setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Install dependencies
+pnpm install
+
+# Set up environment variables
+cp .env.example .env.local
+
+# Run Convex dev server (in a separate terminal)
+npx convex dev
+
+# Run the app
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and start splitting.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+SPLITWISE_CLIENT_ID=
+SPLITWISE_CLIENT_SECRET=
+GEMINI_API_KEY=
+CONVEX_DEPLOYMENT=
+NEXT_PUBLIC_CONVEX_URL=
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with caffeine and the eternal desire to know exactly who owes what :P.
