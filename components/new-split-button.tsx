@@ -31,13 +31,13 @@ export function NewSplitButton() {
         </Button>
       </div>
       {/* Desktop: top-center, with text */}
-      <div className="hidden md:block fixed top-6 left-1/2 -translate-x-1/2 z-50">
+      <div className="hidden md:block fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="rounded-none shadow-lg cursor-pointer hover:scale-105 transition-transform"
+          className="rounded-none shadow-lg cursor-pointer py-6 px-6 items-center hover:scale-105 transition-transform"
         >
-          <HugeiconsIcon icon={Add01Icon} size={18} />
-          <span>New Split</span>
+          <HugeiconsIcon icon={Add01Icon} size={22} />
+          <span className="text-md">New Split</span>
         </Button>
       </div>
       <NewSplitModal open={isOpen} onOpenChange={setIsOpen} />

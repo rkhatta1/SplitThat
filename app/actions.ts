@@ -1,6 +1,7 @@
 "use server";
 
 import { getSplitwiseClient } from "@/lib/splitwise";
+import { decryptToken } from "@/lib/crypto";
 import { cookies } from "next/headers";
 import { api } from "../convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
@@ -20,13 +21,33 @@ async function getSession() {
   return result;
 }
 
+/**
+ * Gets the decrypted access token for the current user
+ */
+async function getDecryptedAccessToken(userId: string): Promise<string | null> {
+  const encryptedToken = await convex.query(api.auth.getAccessToken, {
+    userId: userId as any,
+  });
+
+  console.log("Encrypted token retrieved:", encryptedToken ? `${encryptedToken.substring(0, 20)}...` : "null");
+
+  if (!encryptedToken) return null;
+
+  try {
+    const decrypted = decryptToken(encryptedToken);
+    console.log("Token decrypted successfully, length:", decrypted.length);
+    return decrypted;
+  } catch (error) {
+    console.error("Failed to decrypt access token:", error);
+    return null;
+  }
+}
+
 export async function getSplitwiseData() {
   const session = await getSession();
   if (!session) return null;
 
-  const token = await convex.query(api.auth.getAccessToken, {
-    userId: session.user._id,
-  });
+  const token = await getDecryptedAccessToken(session.user._id);
 
   if (!token) return { friends: [], groups: [] };
 
@@ -82,9 +103,7 @@ export async function createSplit(params: {
   const session = await getSession();
   if (!session) throw new Error("Not authenticated");
 
-  const token = await convex.query(api.auth.getAccessToken, {
-    userId: session.user._id,
-  });
+  const token = await getDecryptedAccessToken(session.user._id);
   if (!token) throw new Error("No Splitwise token found");
 
   const sw = getSplitwiseClient(token);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../../convex/_generated/api";
+import { encryptToken } from "@/lib/crypto";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -8,6 +9,17 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const state = searchParams.get("state");
+
+  // Validate state parameter for CSRF protection
+  const storedState = request.cookies.get("oauth_state")?.value;
+
+  if (!storedState || !state || storedState !== state) {
+    console.error("OAuth state mismatch - possible CSRF attack");
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/login?error=invalid_state`
+    );
+  }
 
   if (error) {
     return NextResponse.redirect(
@@ -50,6 +62,7 @@ export async function GET(request: NextRequest) {
 
     const tokens = await tokenResponse.json();
     const accessToken = tokens.access_token;
+    const refreshToken = tokens.refresh_token;
 
     // Get user info from Splitwise
     const userResponse = await fetch(
@@ -70,14 +83,18 @@ export async function GET(request: NextRequest) {
     const userData = await userResponse.json();
     const user = userData.user;
 
-    // Create or update user in Convex
+    // Encrypt tokens before storing
+    const encryptedAccessToken = encryptToken(accessToken);
+    const encryptedRefreshToken = refreshToken ? encryptToken(refreshToken) : undefined;
+
+    // Create or update user in Convex with encrypted tokens
     const userId = await convex.mutation(api.auth.upsertUser, {
       email: user.email,
       name: `${user.first_name} ${user.last_name || ""}`.trim(),
       image: user.picture?.medium,
       splitwiseId: user.id.toString(),
-      accessToken,
-      refreshToken: tokens.refresh_token,
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
     });
 
     // Generate session token
@@ -103,6 +120,9 @@ export async function GET(request: NextRequest) {
       expires: new Date(expiresAt),
       path: "/",
     });
+
+    // Clear the oauth_state cookie
+    response.cookies.delete("oauth_state");
 
     return response;
   } catch (error) {

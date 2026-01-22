@@ -111,8 +111,8 @@ export default function DashboardPage() {
 
       <div className="rounded-xl border bg-card text-card-foreground shadow p-8 text-center space-y-4">
         <h2 className="text-xl font-semibold">Ready to split?</h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Click the "New Split" button at the top to create a manual expense or upload a receipt for AI-powered itemization.
+        <p className="text-muted-foreground max-w-md md:max-w-lg mx-auto">
+          Click the "New Split" button at the bottom to create a manual expense or upload a receipt for AI-powered itemization.
         </p>
       </div>
     </div>
