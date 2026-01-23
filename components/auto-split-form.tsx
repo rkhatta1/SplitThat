@@ -93,10 +93,17 @@ export function AutoSplitForm({
 
     // Build participants list with names
     const participantNames: string[] = [];
-    if (currentUser) {
+
+    // Only add current user if explicitly included in selectedFriends
+    const includeCurrentUser = formState.selectedFriends.includes(currentUser?.id.toString() || "");
+    if (currentUser && includeCurrentUser) {
       participantNames.push(currentUser.first_name);
     }
+
     formState.selectedFriends.forEach((friendId) => {
+      // Skip current user since we already handled them
+      if (friendId === currentUser?.id.toString()) return;
+
       const friend = friends.find((f) => f.id.toString() === friendId);
       if (friend) {
         participantNames.push(friend.first_name);
@@ -182,9 +189,9 @@ export function AutoSplitForm({
         </div>
 
         <div className="space-y-1 md:space-y-2">
-          <Label className="text-[0.75rem]">Split with</Label>
+          <Label className="text-[0.75rem] hidden md:block">Split with</Label>
           <ScrollArea className="h-24 md:h-32 rounded-md border p-2">
-            {filteredFriends.length === 0 ? (
+            {filteredFriends.length === 0 && !currentUser ? (
               <p className="text-[0.75rem] md:text-sm text-muted-foreground">
                 {formState.selectedGroup && formState.selectedGroup !== "none"
                   ? "No friends in this group"
@@ -192,6 +199,22 @@ export function AutoSplitForm({
               </p>
             ) : (
               <div className="space-y-2">
+                {/* Current user option */}
+                {currentUser && (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="auto-friend-me"
+                      checked={formState.selectedFriends.includes(currentUser.id.toString())}
+                      onCheckedChange={() => toggleFriend(currentUser.id.toString())}
+                    />
+                    <label
+                      htmlFor="auto-friend-me"
+                      className="text-sm font-medium leading-none cursor-pointer"
+                    >
+                      Me ({currentUser.first_name})
+                    </label>
+                  </div>
+                )}
                 {filteredFriends.map((friend) => (
                   <div key={friend.id} className="flex items-center space-x-2">
                     <Checkbox

@@ -163,3 +163,92 @@ export async function createSplit(params: {
     throw error;
   }
 }
+
+export async function updateSplit(params: {
+  splitId: string; // Convex ID
+  splitwiseId: string; // Splitwise expense ID
+  description?: string;
+  amount?: number;
+  date?: string;
+  groupId?: string;
+  details?: string;
+  // For itemized splits
+  userShares?: UserShare[];
+  items?: SplitItem[];
+  tax?: number;
+  tip?: number;
+  payerId?: string;
+}) {
+  const session = await getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const token = await getDecryptedAccessToken(session.user._id);
+  if (!token) throw new Error("No Splitwise token found");
+
+  try {
+    const expenseId = params.splitwiseId.toString();
+    console.log("Updating Splitwise expense ID:", expenseId);
+
+    // Build the request body as URLSearchParams (Splitwise expects form-encoded data)
+    const formData = new URLSearchParams();
+
+    if (params.description) formData.append("description", params.description);
+    if (params.amount) formData.append("cost", params.amount.toFixed(2));
+    if (params.date) formData.append("date", params.date);
+    if (params.groupId) formData.append("group_id", params.groupId);
+    if (params.details) formData.append("details", params.details);
+
+    // If we have user shares, add them
+    if (params.userShares && params.userShares.length > 0) {
+      params.userShares.forEach((share, index) => {
+        formData.append(`users__${index}__user_id`, share.odId);
+        formData.append(`users__${index}__paid_share`, share.paidShare.toFixed(2));
+        formData.append(`users__${index}__owed_share`, share.owedShare.toFixed(2));
+      });
+    }
+
+    // Make direct REST API call to Splitwise
+    const response = await fetch(
+      `https://secure.splitwise.com/api/v3.0/update_expense/${expenseId}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Splitwise update failed:", response.status, errorText);
+      throw new Error(`Splitwise API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log("Splitwise update successful:", result);
+
+    // Extract participant IDs from userShares
+    const participants = params.userShares
+      ? params.userShares.map((share) => share.odId)
+      : undefined;
+
+    // Update in Convex
+    await convex.mutation(api.splits.updateSplit, {
+      id: params.splitId as any,
+      amount: params.amount,
+      description: params.description,
+      items: params.items ? JSON.stringify(params.items) : undefined,
+      userShares: params.userShares ? JSON.stringify(params.userShares) : undefined,
+      tax: params.tax,
+      tip: params.tip,
+      participants,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating split:", error);
+    throw error;
+  }
+}

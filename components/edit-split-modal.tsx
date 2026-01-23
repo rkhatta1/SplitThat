@@ -27,7 +27,7 @@ import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { toast } from "sonner";
 import type { Id } from "../convex/_generated/dataModel";
-import type { UserShare } from "@/app/actions";
+import { updateSplit, type UserShare } from "@/app/actions";
 
 interface ManualEditModalProps {
   split: any;
@@ -38,7 +38,6 @@ interface ManualEditModalProps {
 
 function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditModalProps) {
   const { data } = useSplitwiseContext();
-  const updateSplitMutation = useMutation(api.splits.updateSplit);
   const [submitting, setSubmitting] = useState(false);
 
   const friends = data?.friends || [];
@@ -65,11 +64,8 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
 
       // Parse participants from the split
       if (split.participants) {
-        // Filter out current user from participants
-        const friendIds = split.participants.filter(
-          (id: string) => id !== currentUser?.id?.toString()
-        );
-        setSelectedFriends(friendIds);
+        // Include all participants (including current user if they were part of it)
+        setSelectedFriends(split.participants);
       }
 
       // Parse userShares to find who paid
@@ -160,19 +156,21 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
     try {
       const amountNum = parseFloat(amount);
 
-      // Build user shares - equal split among all participants
-      const allParticipantIds = [
-        currentUser?.id.toString(),
-        ...selectedFriends,
-      ].filter(Boolean) as string[];
+      // Build user shares - equal split among selected participants only
+      const allParticipantIds = selectedFriends.filter(Boolean) as string[];
+
+      if (allParticipantIds.length === 0) {
+        toast.error("Please select at least one participant");
+        setSubmitting(false);
+        return;
+      }
 
       const sharePerPerson = amountNum / allParticipantIds.length;
 
       const userShares: UserShare[] = allParticipantIds.map((id) => {
         const friend = friends.find((f) => f.id.toString() === id);
-        const name = id === currentUser?.id.toString()
-          ? "Me"
-          : friend?.first_name || "Unknown";
+        const isCurrentUser = id === currentUser?.id.toString();
+        const name = isCurrentUser ? "Me" : friend?.first_name || "Unknown";
 
         return {
           odId: id,
@@ -182,15 +180,40 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
         };
       });
 
-      await updateSplitMutation({
-        id: split._id as Id<"splits">,
+      // If the payer is not in the participant list, add them with owedShare: 0
+      const payerInParticipants = allParticipantIds.includes(paidBy);
+      if (!payerInParticipants && paidBy) {
+        const payerFriend = friends.find((f) => f.id.toString() === paidBy);
+        const isPayerCurrentUser = paidBy === currentUser?.id.toString();
+        const payerName = isPayerCurrentUser ? "Me" : payerFriend?.first_name || "Unknown";
+
+        userShares.push({
+          odId: paidBy,
+          name: payerName,
+          owedShare: 0, // Payer doesn't owe anything if not a participant
+          paidShare: amountNum,
+        });
+      }
+
+      // Get the splitwiseId
+      const splitwiseId = split.splitwiseId;
+      if (!splitwiseId) {
+        throw new Error("No Splitwise ID found for this split");
+      }
+
+      // Update on both Splitwise and Convex
+      await updateSplit({
+        splitId: split._id,
+        splitwiseId,
         amount: amountNum,
         description,
-        userShares: JSON.stringify(userShares),
-        participants: allParticipantIds,
+        date,
+        groupId: selectedGroup && selectedGroup !== "none" ? selectedGroup : undefined,
+        userShares,
+        payerId: paidBy,
       });
 
-      toast.success("Split updated!");
+      toast.success("Split updated on Splitwise!");
       onSuccess();
     } catch (err) {
       console.error(err);
@@ -276,9 +299,9 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
           </div>
 
           <div className="space-y-2">
-            <Label>Split with Friends</Label>
+            <Label className="hidden md:block">Split with</Label>
             <ScrollArea className="h-32 rounded-md border p-2">
-              {filteredFriends.length === 0 ? (
+              {filteredFriends.length === 0 && !currentUser ? (
                 <p className="text-sm text-muted-foreground">
                   {selectedGroup && selectedGroup !== "none"
                     ? "No friends in this group"
@@ -286,6 +309,22 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
                 </p>
               ) : (
                 <div className="space-y-2">
+                  {/* Current user option */}
+                  {currentUser && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="edit-friend-me"
+                        checked={selectedFriends.includes(currentUser.id.toString())}
+                        onCheckedChange={() => toggleFriend(currentUser.id.toString())}
+                      />
+                      <label
+                        htmlFor="edit-friend-me"
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        Me ({currentUser.first_name})
+                      </label>
+                    </div>
+                  )}
                   {filteredFriends.map((friend) => (
                     <div key={friend.id} className="flex items-center space-x-2">
                       <Checkbox

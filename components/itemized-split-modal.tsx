@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useEffect, useState, useMemo } from "react";
-import { createSplit, type UserShare, type SplitItem } from "@/app/actions";
+import { createSplit, updateSplit, type UserShare, type SplitItem } from "@/app/actions";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
@@ -321,6 +321,20 @@ export function ItemizedSplitModal({
         }
       });
 
+      // If the payer is not in the participants list (no items assigned), add them with owedShare: 0
+      const payerInShares = userShares.find((share) => share.odId === paidBy);
+      if (!payerInShares && paidBy) {
+        const payer = participants.find((p) => p.id === paidBy);
+        if (payer) {
+          userShares.push({
+            odId: payer.id,
+            name: payer.name,
+            owedShare: 0, // Payer doesn't owe anything if they have no items
+            paidShare: total,
+          });
+        }
+      }
+
       // Build items for database storage
       const splitItems: SplitItem[] = items.map((item, idx) => ({
         name: item.name,
@@ -332,18 +346,25 @@ export function ItemizedSplitModal({
         // Extract participant IDs from userShares
         const participantIds = userShares.map((share) => share.odId);
 
-        // Update existing split in database
-        await updateSplitMutation({
-          id: splitId,
+        // Get the splitwiseId from the split data
+        const splitwiseId = (data as any).splitwiseId;
+        if (!splitwiseId) {
+          throw new Error("No Splitwise ID found for this split");
+        }
+
+        // Update on both Splitwise and Convex
+        await updateSplit({
+          splitId,
+          splitwiseId,
           amount: total,
           description: data.title || data.restaurantName || "AI Itemized Split",
-          items: JSON.stringify(splitItems),
-          userShares: JSON.stringify(userShares),
+          items: splitItems,
+          userShares,
           tax,
           tip,
-          participants: participantIds,
+          payerId: paidBy,
         });
-        toast.success("Split updated!");
+        toast.success("Split updated on Splitwise!");
       } else {
         // Create new split
         await createSplit({

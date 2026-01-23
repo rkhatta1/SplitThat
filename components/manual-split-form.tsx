@@ -115,19 +115,21 @@ export function ManualSplitForm({
     try {
       const amount = parseFloat(formState.amount);
 
-      // Build user shares - equal split among all participants
-      const allParticipantIds = [
-        currentUser?.id.toString(),
-        ...formState.selectedFriends,
-      ].filter(Boolean) as string[];
+      // Build user shares - equal split among selected participants
+      const allParticipantIds = formState.selectedFriends.filter(Boolean) as string[];
+
+      if (allParticipantIds.length === 0) {
+        toast.error("Please select at least one participant");
+        setSubmitting(false);
+        return;
+      }
 
       const sharePerPerson = amount / allParticipantIds.length;
 
       const userShares: UserShare[] = allParticipantIds.map((id) => {
         const friend = friends.find((f) => f.id.toString() === id);
-        const name = id === currentUser?.id.toString()
-          ? "Me"
-          : friend?.first_name || "Unknown";
+        const isCurrentUser = id === currentUser?.id.toString();
+        const name = isCurrentUser ? "Me" : friend?.first_name || "Unknown";
 
         return {
           odId: id,
@@ -136,6 +138,21 @@ export function ManualSplitForm({
           paidShare: id === formState.paidBy ? amount : 0,
         };
       });
+
+      // If the payer is not in the participant list, add them with owedShare: 0
+      const payerInParticipants = allParticipantIds.includes(formState.paidBy);
+      if (!payerInParticipants && formState.paidBy) {
+        const payerFriend = friends.find((f) => f.id.toString() === formState.paidBy);
+        const isPayerCurrentUser = formState.paidBy === currentUser?.id.toString();
+        const payerName = isPayerCurrentUser ? "Me" : payerFriend?.first_name || "Unknown";
+
+        userShares.push({
+          odId: formState.paidBy,
+          name: payerName,
+          owedShare: 0, // Payer doesn't owe anything if not a participant
+          paidShare: amount,
+        });
+      }
 
       await createSplit({
         description: formState.description,
@@ -231,9 +248,9 @@ export function ManualSplitForm({
       </div>
 
       <div className="space-y-2">
-        <Label>Split with Friends</Label>
+        <Label className="hidden md:block">Split with</Label>
         <ScrollArea className="h-32 rounded-md border p-2">
-          {filteredFriends.length === 0 ? (
+          {filteredFriends.length === 0 && !currentUser ? (
             <p className="text-sm text-muted-foreground">
               {formState.selectedGroup && formState.selectedGroup !== "none"
                 ? "No friends in this group"
@@ -241,6 +258,22 @@ export function ManualSplitForm({
             </p>
           ) : (
             <div className="space-y-2">
+              {/* Current user option */}
+              {currentUser && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="manual-friend-me"
+                    checked={formState.selectedFriends.includes(currentUser.id.toString())}
+                    onCheckedChange={() => toggleFriend(currentUser.id.toString())}
+                  />
+                  <label
+                    htmlFor="manual-friend-me"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Me ({currentUser.first_name})
+                  </label>
+                </div>
+              )}
               {filteredFriends.map((friend) => (
                 <div key={friend.id} className="flex items-center space-x-2">
                   <Checkbox
