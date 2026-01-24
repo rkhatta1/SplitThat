@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { UserGroupIcon, UserIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
+import { toast } from "sonner";
 
 function DashboardSkeleton() {
   return (
@@ -45,6 +46,8 @@ export default function DashboardPage() {
   const { data: session, isPending } = useSession();
   const { data: splitwiseData } = useSplitwiseContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const hasOauthError = searchParams.get("error") === "access_denied";
 
   // Calculate balances per currency (must be before early returns to follow Rules of Hooks)
   const balancesByCurrency = useMemo(() => {
@@ -69,10 +72,23 @@ export default function DashboardPage() {
   const friendCount = splitwiseData?.friends?.length || 0;
 
   useEffect(() => {
-    if (!isPending && !session) {
+    if (!isPending && !session && !hasOauthError) {
       router.push("/app/login");
     }
-  }, [session, isPending, router]);
+  }, [session, isPending, router, hasOauthError]);
+
+  useEffect(() => {
+    if (hasOauthError) {
+      toast("Sign-in cancelled.", {
+        className: "font-poppins justify-start items-center flex px-4 max-w-[20rem]"
+      });
+      if (session) {
+        router.replace("/app");
+      } else if (!isPending) {
+        router.replace("/app/login");
+      }
+    }
+  }, [router, hasOauthError, session, isPending]);
 
   if (isPending) return <DashboardSkeleton />;
   if (!session) return null;

@@ -26,6 +26,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "convex/react";
@@ -166,14 +167,19 @@ export function AppSidebar() {
                   {user?.name || "Guest"}
                 </span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 group-data-[collapsible=icon]:hidden"
-                onClick={() => signOut()}
-              >
-                <HugeiconsIcon icon={Logout01Icon} size={16} />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 group-data-[collapsible=icon]:hidden"
+                    onClick={() => signOut()}
+                  >
+                    <HugeiconsIcon icon={Logout01Icon} size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Sign out</TooltipContent>
+              </Tooltip>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
