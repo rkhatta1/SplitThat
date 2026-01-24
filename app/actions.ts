@@ -90,6 +90,8 @@ export async function createSplit(params: {
   description: string;
   amount: number;
   date: string;
+  currency?: string;
+  notes?: string;
   groupId?: string;
   details?: string;
   type: "manual" | "auto";
@@ -114,8 +116,9 @@ export async function createSplit(params: {
       cost: params.amount.toFixed(2),
       description: params.description,
       date: params.date,
+      currency_code: params.currency || "USD",
       group_id: params.groupId ? parseInt(params.groupId) : undefined,
-      details: params.details,
+      details: params.notes || params.details,
     };
 
     // If we have user shares, use them instead of split_equally
@@ -146,6 +149,8 @@ export async function createSplit(params: {
       amount: params.amount,
       description: params.description,
       date: params.date,
+      currency: params.currency || "USD",
+      notes: params.notes,
       type: params.type,
       status: "synced",
       groupId: params.groupId,
@@ -170,6 +175,8 @@ export async function updateSplit(params: {
   description?: string;
   amount?: number;
   date?: string;
+  currency?: string;
+  notes?: string;
   groupId?: string;
   details?: string;
   // For itemized splits
@@ -195,8 +202,10 @@ export async function updateSplit(params: {
     if (params.description) formData.append("description", params.description);
     if (params.amount) formData.append("cost", params.amount.toFixed(2));
     if (params.date) formData.append("date", params.date);
+    if (params.currency) formData.append("currency_code", params.currency);
     if (params.groupId) formData.append("group_id", params.groupId);
-    if (params.details) formData.append("details", params.details);
+    if (params.notes) formData.append("details", params.notes);
+    else if (params.details) formData.append("details", params.details);
 
     // If we have user shares, add them
     if (params.userShares && params.userShares.length > 0) {
@@ -239,6 +248,8 @@ export async function updateSplit(params: {
       id: params.splitId as any,
       amount: params.amount,
       description: params.description,
+      currency: params.currency,
+      notes: params.notes,
       items: params.items ? JSON.stringify(params.items) : undefined,
       userShares: params.userShares ? JSON.stringify(params.userShares) : undefined,
       tax: params.tax,

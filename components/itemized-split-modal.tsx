@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -76,6 +77,7 @@ export function ItemizedSplitModal({
 }: ItemizedSplitModalProps) {
   const { data: splitwiseData } = useSplitwiseContext();
   const allFriends = splitwiseData?.friends || [];
+  const groups = splitwiseData?.groups || [];
   const currentUser = splitwiseData?.currentUser;
   const updateSplitMutation = useMutation(api.splits.updateSplit);
 
@@ -111,6 +113,10 @@ export function ItemizedSplitModal({
   const [items, setItems] = useState<EditableItem[]>([]);
   const [tax, setTax] = useState(0);
   const [tip, setTip] = useState(0);
+  const [currency, setCurrency] = useState("USD");
+  const [date, setDate] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [notes, setNotes] = useState("");
   const [selections, setSelections] = useState<Record<number, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [paidBy, setPaidBy] = useState<string>("");
@@ -128,6 +134,9 @@ export function ItemizedSplitModal({
     // Set tax and tip
     setTax(data.tax || 0);
     setTip(data.tip || 0);
+    setCurrency(data.currency || "USD");
+    setDate(data.date || new Date().toISOString().split("T")[0]);
+    setSelectedGroup(data.selectedGroup || "none");
 
     // Default paidBy to current user
     if (currentUser) {
@@ -358,6 +367,10 @@ export function ItemizedSplitModal({
           splitwiseId,
           amount: total,
           description: data.title || data.restaurantName || "AI Itemized Split",
+          date,
+          currency,
+          notes,
+          groupId: selectedGroup && selectedGroup !== "none" ? selectedGroup : undefined,
           items: splitItems,
           userShares,
           tax,
@@ -370,8 +383,10 @@ export function ItemizedSplitModal({
         await createSplit({
           description: data.title || data.restaurantName || "AI Itemized Split",
           amount: total,
-          date: data.date || new Date().toISOString().split("T")[0],
-          groupId: data.selectedGroup && data.selectedGroup !== "none" ? data.selectedGroup : undefined,
+          date,
+          currency,
+          notes,
+          groupId: selectedGroup && selectedGroup !== "none" ? selectedGroup : undefined,
           details,
           type: "auto",
           userShares,
@@ -394,13 +409,20 @@ export function ItemizedSplitModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[75%] max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader>
+        <DialogHeader className="flex flex-row gap-2 items-center">
           <DialogTitle>
             {editMode ? "Edit Split: " : ""}{data.title || data.restaurantName || "Itemized Split"}
           </DialogTitle>
-          {data.date && (
-            <p className="text-xs md:text-sm text-muted-foreground">{data.date}</p>
-          )}
+          <span className="text-xs opacity-50">•</span>
+          <div className="flex items-center gap-2">
+            <Label className="hidden md:block text-xs text-muted-foreground">Date:</Label>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="h-7 w-36 text-xs"
+            />
+          </div>
         </DialogHeader>
 
         {items.length === 0 ? (
@@ -410,7 +432,7 @@ export function ItemizedSplitModal({
         ) : (
           <div className="flex-1 overflow-hidden">
             {/* Mobile Layout - Card based */}
-            <div className="md:hidden overflow-auto max-h-[48vh] no-scrollbar space-y-2 py-2">
+            <div className="md:hidden overflow-auto flex flex-col max-h-[48vh] no-scrollbar space-y-1 py-3">
               {items.map((item, idx) => (
                 <div key={idx} className="border rounded-lg p-2 space-y-1.5">
                   {/* Row 1: Item name, Amount, Delete button */}
@@ -441,13 +463,13 @@ export function ItemizedSplitModal({
                     </button>
                   </div>
                   {/* Row 2: Participant pills */}
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {participants.map((participant) => (
                       <button
                         key={participant.id}
                         type="button"
                         onClick={() => toggleSelection(idx, participant.id)}
-                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
+                        className={`flex items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-medium transition-colors ${
                           selections[idx]?.includes(participant.id)
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted hover:bg-muted/80"
@@ -574,7 +596,7 @@ export function ItemizedSplitModal({
           {/* Mobile Footer Layout */}
           <div className="md:hidden space-y-2">
             {/* Subtotal, Tax, Tip */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-row items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-1">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">${subtotal.toFixed(2)}</span>
@@ -588,7 +610,7 @@ export function ItemizedSplitModal({
                     step="0.01"
                     value={tax || ""}
                     onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                    className="py-0.5 text-xs w-14 h-7"
+                    className="py-0.5 text-xs h-7"
                   />
                 </div>
               </div>
@@ -601,7 +623,7 @@ export function ItemizedSplitModal({
                     step="0.01"
                     value={tip || ""}
                     onChange={(e) => setTip(parseFloat(e.target.value) || 0)}
-                    className="text-xs py-0.5 w-14 h-7"
+                    className="text-xs py-0.5 h-7"
                   />
                 </div>
               </div>
@@ -614,7 +636,26 @@ export function ItemizedSplitModal({
                 <span className="font-bold text-sm">${total.toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Label className="text-xs text-muted-foreground whitespace-nowrap">Paid by</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger className="w-20 h-7 text-xs">
+                    <SelectValue placeholder="Currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD" className="text-xs">USD</SelectItem>
+                    <SelectItem value="EUR" className="text-xs">EUR</SelectItem>
+                    <SelectItem value="GBP" className="text-xs">GBP</SelectItem>
+                    <SelectItem value="INR" className="text-xs">INR</SelectItem>
+                    <SelectItem value="CAD" className="text-xs">CAD</SelectItem>
+                    <SelectItem value="AUD" className="text-xs">AUD</SelectItem>
+                    <SelectItem value="JPY" className="text-xs">JPY</SelectItem>
+                    <SelectItem value="CNY" className="text-xs">CNY</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            {/* Paid by selector */}
+            <div className="flex items-center justify-start gap-2">
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">Paid by</Label>
+              <div className="flex items-center gap-1.5">
                 <Select value={paidBy} onValueChange={setPaidBy}>
                   <SelectTrigger className="w-28 h-7 text-xs">
                     <SelectValue placeholder="Select who paid" />
@@ -628,6 +669,19 @@ export function ItemizedSplitModal({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            </div>
+
+            {/* Notes field */}
+            <div className="space-y-1">
+              <Label className="text-xs">Notes</Label>
+              <Textarea
+                placeholder="Add a note..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className="text-xs"
+              />
             </div>
           </div>
 
@@ -646,6 +700,24 @@ export function ItemizedSplitModal({
                 </div>
               </div>
               <div className="flex flex-row gap-6">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Currency</Label>
+                  <Select value={currency} onValueChange={setCurrency}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue placeholder="Currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="INR">INR</SelectItem>
+                      <SelectItem value="CAD">CAD</SelectItem>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                      <SelectItem value="JPY">JPY</SelectItem>
+                      <SelectItem value="CNY">CNY</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-muted-foreground whitespace-nowrap">Paid by</Label>
                   <Select value={paidBy} onValueChange={setPaidBy}>
@@ -689,6 +761,17 @@ export function ItemizedSplitModal({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Notes field */}
+          <div className="hidden md:flex md:flex-col space-y-2">
+            <Label className="text-sm">Notes</Label>
+            <Textarea
+              placeholder="Add a note..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+            />
           </div>
 
           {/* Per Person Breakdown */}

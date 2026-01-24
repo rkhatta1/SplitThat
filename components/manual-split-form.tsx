@@ -158,6 +158,8 @@ export function ManualSplitForm({
         description: formState.description,
         amount,
         date: formState.date,
+        currency: formState.currency,
+        notes: formState.notes,
         groupId: formState.selectedGroup && formState.selectedGroup !== "none" ? formState.selectedGroup : undefined,
         details: formState.notes || undefined,
         type: "manual",
@@ -177,7 +179,7 @@ export function ManualSplitForm({
   if (isLoading) return <div className="p-4 text-center">Loading data...</div>;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-2 md:space-y-4">
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
         <Input
@@ -202,6 +204,26 @@ export function ManualSplitForm({
           />
         </div>
         <div className="space-y-2">
+          <Label htmlFor="currency">Currency</Label>
+          <Select value={formState.currency} onValueChange={(value) => updateFormState({ currency: value })}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select currency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="USD">USD ($)</SelectItem>
+              <SelectItem value="EUR">EUR (€)</SelectItem>
+              <SelectItem value="GBP">GBP (£)</SelectItem>
+              <SelectItem value="INR">INR (₹)</SelectItem>
+              <SelectItem value="CAD">CAD ($)</SelectItem>
+              <SelectItem value="AUD">AUD ($)</SelectItem>
+              <SelectItem value="JPY">JPY (¥)</SelectItem>
+              <SelectItem value="CNY">CNY (¥)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
           <Label htmlFor="date">Date</Label>
           <Input
             id="date"
@@ -210,26 +232,24 @@ export function ManualSplitForm({
             onChange={(e) => updateFormState({ date: e.target.value })}
           />
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="group">Group (Optional)</Label>
+          <Select value={formState.selectedGroup} onValueChange={handleGroupChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No group (individual friends)</SelectItem>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id.toString()}>
+                  {g.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-
-      <div className="space-y-2">
-        <Label htmlFor="group">Group (Optional)</Label>
-        <Select value={formState.selectedGroup} onValueChange={handleGroupChange}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No group (individual friends)</SelectItem>
-            {groups.map((g) => (
-              <SelectItem key={g.id} value={g.id.toString()}>
-                {g.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
       <div className="space-y-2">
         <Label>Paid by</Label>
         <Select value={formState.paidBy} onValueChange={(value) => updateFormState({ paidBy: value })}>
@@ -244,7 +264,6 @@ export function ManualSplitForm({
             ))}
           </SelectContent>
         </Select>
-      </div>
       </div>
 
       <div className="space-y-2">

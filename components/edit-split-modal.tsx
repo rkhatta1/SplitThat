@@ -48,6 +48,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [notes, setNotes] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
@@ -59,6 +60,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
       setDescription(split.description || "");
       setAmount(split.amount?.toString() || "");
       setDate(split.date || "");
+      setCurrency(split.currency || "USD");
       setNotes(split.notes || "");
       setSelectedGroup(split.groupId || "none");
 
@@ -208,6 +210,8 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
         amount: amountNum,
         description,
         date,
+        currency,
+        notes,
         groupId: selectedGroup && selectedGroup !== "none" ? selectedGroup : undefined,
         userShares,
         payerId: paidBy,
@@ -254,6 +258,26 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="edit-currency">Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="GBP">GBP (£)</SelectItem>
+                  <SelectItem value="INR">INR (₹)</SelectItem>
+                  <SelectItem value="CAD">CAD ($)</SelectItem>
+                  <SelectItem value="AUD">AUD ($)</SelectItem>
+                  <SelectItem value="JPY">JPY (¥)</SelectItem>
+                  <SelectItem value="CNY">CNY (¥)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="edit-date">Date</Label>
               <Input
                 id="edit-date"
@@ -262,9 +286,6 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-group">Group (Optional)</Label>
               <Select value={selectedGroup} onValueChange={handleGroupChange}>
@@ -281,21 +302,22 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Paid by</Label>
-              <Select value={paidBy} onValueChange={setPaidBy}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select who paid" />
-                </SelectTrigger>
-                <SelectContent>
-                  {potentialPayers.map((payer) => (
-                    <SelectItem key={payer.id} value={payer.id}>
-                      {payer.isCurrentUser ? "Me" : payer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Paid by</Label>
+            <Select value={paidBy} onValueChange={setPaidBy}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select who paid" />
+              </SelectTrigger>
+              <SelectContent>
+                {potentialPayers.map((payer) => (
+                  <SelectItem key={payer.id} value={payer.id}>
+                    {payer.isCurrentUser ? "Me" : payer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -343,6 +365,15 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
                 </div>
               )}
             </ScrollArea>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              placeholder="Add a note..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

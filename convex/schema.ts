@@ -31,6 +31,8 @@ export default defineSchema({
     amount: v.number(),
     description: v.string(),
     date: v.string(),
+    currency: v.optional(v.string()), // Currency code (USD, EUR, etc.)
+    notes: v.optional(v.string()), // User notes/comments
     splitwiseId: v.optional(v.string()),
     type: v.union(v.literal("manual"), v.literal("auto")),
     status: v.union(v.literal("pending"), v.literal("synced")),

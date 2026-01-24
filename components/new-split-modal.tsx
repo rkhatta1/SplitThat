@@ -23,6 +23,7 @@ export interface SharedFormState {
   description: string;
   amount: string;
   date: string;
+  currency: string;
   notes: string;
   paidBy: string; // Who paid the bill
   // Auto-specific
@@ -37,6 +38,7 @@ const initialFormState: SharedFormState = {
   description: "",
   amount: "",
   date: new Date().toISOString().split("T")[0],
+  currency: "USD",
   notes: "",
   paidBy: "", // Will be set to current user when component mounts
   title: "",

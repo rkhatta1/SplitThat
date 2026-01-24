@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { UserGroupIcon, UserIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 function DashboardSkeleton() {
   return (
@@ -46,6 +46,28 @@ export default function DashboardPage() {
   const { data: splitwiseData } = useSplitwiseContext();
   const router = useRouter();
 
+  // Calculate balances per currency (must be before early returns to follow Rules of Hooks)
+  const balancesByCurrency = useMemo(() => {
+    const balances: Record<string, number> = {};
+
+    splitwiseData?.friends?.forEach((friend) => {
+      friend.balance?.forEach((bal: any) => {
+        const currency = bal.currency_code || 'USD';
+        const amount = parseFloat(bal.amount) || 0;
+        balances[currency] = (balances[currency] || 0) + amount;
+      });
+    });
+
+    return balances;
+  }, [splitwiseData?.friends]);
+
+  // Get primary balance (USD or first currency)
+  const primaryCurrency = balancesByCurrency['USD'] !== undefined ? 'USD' : Object.keys(balancesByCurrency)[0];
+  const totalBalance = primaryCurrency ? balancesByCurrency[primaryCurrency] : 0;
+
+  const groupCount = splitwiseData?.groups?.length || 0;
+  const friendCount = splitwiseData?.friends?.length || 0;
+
   useEffect(() => {
     if (!isPending && !session) {
       router.push("/app/login");
@@ -54,16 +76,6 @@ export default function DashboardPage() {
 
   if (isPending) return <DashboardSkeleton />;
   if (!session) return null;
-
-  const groupCount = splitwiseData?.groups?.length || 0;
-  const friendCount = splitwiseData?.friends?.length || 0;
-
-  // Calculate total balance from all friends
-  const totalBalance = splitwiseData?.friends?.reduce((sum, friend) => {
-    const balance = friend.balance?.[0];
-    const amount = balance ? parseFloat(balance.amount) : 0;
-    return sum + amount;
-  }, 0) || 0;
 
   return (
     <div className="space-y-8">
@@ -79,10 +91,18 @@ export default function DashboardPage() {
             <HugeiconsIcon icon={Wallet01Icon} size={18} className="text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${totalBalance > 0 ? "text-green-600" : totalBalance < 0 ? "text-red-600" : ""}`}>
-              {totalBalance >= 0 ? "" : "-"}${Math.abs(totalBalance).toFixed(2)}
+            <div className="space-y-2">
+              {Object.entries(balancesByCurrency).length === 0 ? (
+                <div className="text-2xl font-bold">$0.00</div>
+              ) : (
+                Object.entries(balancesByCurrency).map(([currency, balance]) => (
+                  <div key={currency} className={`text-xl font-bold ${balance > 0 ? "text-green-600" : balance < 0 ? "text-red-600" : ""}`}>
+                    {balance >= 0 ? "" : "-"}{currency} {Math.abs(balance).toFixed(2)}
+                  </div>
+                ))
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
               {totalBalance > 0 ? "You are owed" : totalBalance < 0 ? "You owe" : "All settled up"}
             </p>
           </CardContent>
