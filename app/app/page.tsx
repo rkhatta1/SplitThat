@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { UserGroupIcon, UserIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, Suspense } from "react";
+import { useEffect, useMemo, Suspense, useRef } from "react";
 import { toast } from "sonner";
 
 function DashboardSkeleton() {
@@ -48,6 +48,7 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasOauthError = searchParams.get("error") === "access_denied";
+  const toastShownRef = useRef(false);
 
   // Calculate balances per currency (must be before early returns to follow Rules of Hooks)
   const balancesByCurrency = useMemo(() => {
@@ -78,17 +79,15 @@ function DashboardContent() {
   }, [session, isPending, router, hasOauthError]);
 
   useEffect(() => {
-    if (hasOauthError) {
+    if (hasOauthError && !toastShownRef.current) {
+      toastShownRef.current = true;
       toast("Sign-in cancelled.", {
         className: "font-poppins justify-start items-center flex px-4 max-w-[20rem]"
       });
-      if (session) {
-        router.replace("/app");
-      } else if (!isPending) {
-        router.replace("/app/login");
-      }
+      // Clean up the URL by removing the error param
+      router.replace(session ? "/app" : "/app/login");
     }
-  }, [router, hasOauthError, session, isPending]);
+  }, [router, hasOauthError, session]);
 
   if (isPending) return <DashboardSkeleton />;
   if (!session) return null;
@@ -112,13 +111,13 @@ function DashboardContent() {
                 <div className="text-2xl font-bold">$0.00</div>
               ) : (
                 Object.entries(balancesByCurrency).map(([currency, balance]) => (
-                  <div key={currency} className={`text-xl font-bold ${balance > 0 ? "text-green-600" : balance < 0 ? "text-red-600" : ""}`}>
+                  <div key={currency} className={`text-xl md:text-2xl font-bold ${balance > 0 ? "text-green-600" : balance < 0 ? "text-red-600" : ""}`}>
                     {balance >= 0 ? "" : "-"}{currency} {Math.abs(balance).toFixed(2)}
                   </div>
                 ))
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground">
               {totalBalance > 0 ? "You are owed" : totalBalance < 0 ? "You owe" : "All settled up"}
             </p>
           </CardContent>
@@ -129,7 +128,7 @@ function DashboardContent() {
             <HugeiconsIcon icon={UserGroupIcon} size={18} className="text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{groupCount}</div>
+            <div className="text-xl md:text-2xl font-bold">{groupCount}</div>
             <p className="text-xs text-muted-foreground">Groups in Splitwise</p>
           </CardContent>
         </Card>
@@ -139,7 +138,7 @@ function DashboardContent() {
             <HugeiconsIcon icon={UserIcon} size={18} className="text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{friendCount}</div>
+            <div className="text-xl md:text-2xl font-bold">{friendCount}</div>
             <p className="text-xs text-muted-foreground">Connected friends</p>
           </CardContent>
         </Card>
