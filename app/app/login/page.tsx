@@ -3,19 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth-client";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    if (searchParams.get("error") === "access_denied") {
-      router.replace("/app?error=access_denied");
-    }
-  }, [router, searchParams]);
 
   return (
     <div className="flex items-center justify-center min-h-[80vh]">
