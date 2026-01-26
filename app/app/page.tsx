@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { UserGroupIcon, UserIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, Suspense } from "react";
 import { toast } from "sonner";
 
 function DashboardSkeleton() {
@@ -42,7 +42,7 @@ function DashboardSkeleton() {
   );
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { data: session, isPending } = useSession();
   const { data: splitwiseData } = useSplitwiseContext();
   const router = useRouter();
@@ -152,5 +152,13 @@ export default function DashboardPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
