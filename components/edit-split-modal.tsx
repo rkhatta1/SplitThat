@@ -61,7 +61,8 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
       setAmount(split.amount?.toString() || "");
       setDate(split.date || "");
       setCurrency(split.currency || "USD");
-      setNotes(split.notes || "");
+      // Load userNotes if available, otherwise fall back to notes
+      setNotes(split.userNotes || split.notes || "");
       setSelectedGroup(split.groupId || "none");
 
       // Parse participants from the split
@@ -70,8 +71,10 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
         setSelectedFriends(split.participants);
       }
 
-      // Parse userShares to find who paid
-      if (split.userShares) {
+      // Get payer from stored payerId first, then fall back to parsing userShares
+      if (split.payerId) {
+        setPaidBy(split.payerId);
+      } else if (split.userShares) {
         try {
           const shares = JSON.parse(split.userShares);
           const payer = shares.find((s: any) => s.paidShare > 0);
@@ -211,7 +214,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
         description,
         date,
         currency,
-        notes,
+        userNotes: notes || undefined,
         groupId: selectedGroup && selectedGroup !== "none" ? selectedGroup : undefined,
         userShares,
         payerId: paidBy,
@@ -423,10 +426,8 @@ export function EditSplitModal() {
       console.error("Failed to parse userShares:", e);
     }
 
-    // Get selected friend IDs from user shares (exclude current user)
-    const selectedFriends = userShares
-      .filter((share) => share.paidShare === 0) // Friends didn't pay
-      .map((share) => share.odId);
+    // Get selected friend IDs from participants (stored list of all participants)
+    const selectedFriends = editingSplit.participants || [];
 
     return {
       title: editingSplit.description,
@@ -434,13 +435,15 @@ export function EditSplitModal() {
       total: editingSplit.amount,
       tax: editingSplit.tax || 0,
       tip: editingSplit.tip || 0,
-      currency: "USD",
+      currency: editingSplit.currency || "USD",
       items,
       selectedGroup: editingSplit.groupId || undefined,
       selectedFriends,
       // Pass the split ID for updating
       splitId: editingSplit._id,
       splitwiseId: editingSplit.splitwiseId,
+      payerId: editingSplit.payerId,
+      userNotes: editingSplit.userNotes,
     };
   }, [editingSplit]);
 

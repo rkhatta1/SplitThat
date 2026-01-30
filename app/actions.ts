@@ -91,9 +91,9 @@ export async function createSplit(params: {
   amount: number;
   date: string;
   currency?: string;
-  notes?: string;
+  userNotes?: string; // User's custom notes
+  details?: string; // Auto-generated breakdown
   groupId?: string;
-  details?: string;
   type: "manual" | "auto";
   // For itemized splits
   userShares?: UserShare[];
@@ -111,6 +111,15 @@ export async function createSplit(params: {
   const sw = getSplitwiseClient(token);
 
   try {
+    // Combine user notes with auto-generated details
+    let combinedNotes = "";
+    if (params.userNotes) {
+      combinedNotes = params.userNotes + "\n\n---\n\n";
+    }
+    if (params.details) {
+      combinedNotes += params.details;
+    }
+
     // Build the expense params
     const expenseParams: Record<string, any> = {
       cost: params.amount.toFixed(2),
@@ -118,7 +127,7 @@ export async function createSplit(params: {
       date: params.date,
       currency_code: params.currency || "USD",
       group_id: params.groupId ? parseInt(params.groupId) : undefined,
-      details: params.notes || params.details,
+      details: combinedNotes || undefined,
     };
 
     // If we have user shares, use them instead of split_equally
@@ -150,7 +159,8 @@ export async function createSplit(params: {
       description: params.description,
       date: params.date,
       currency: params.currency || "USD",
-      notes: params.notes,
+      notes: combinedNotes || undefined,
+      userNotes: params.userNotes,
       type: params.type,
       status: "synced",
       groupId: params.groupId,
@@ -159,6 +169,7 @@ export async function createSplit(params: {
       userShares: params.userShares ? JSON.stringify(params.userShares) : undefined,
       tax: params.tax,
       tip: params.tip,
+      payerId: params.payerId,
       participants,
     });
 
@@ -176,9 +187,9 @@ export async function updateSplit(params: {
   amount?: number;
   date?: string;
   currency?: string;
-  notes?: string;
+  userNotes?: string; // User's custom notes
+  details?: string; // Auto-generated breakdown
   groupId?: string;
-  details?: string;
   // For itemized splits
   userShares?: UserShare[];
   items?: SplitItem[];
@@ -196,6 +207,15 @@ export async function updateSplit(params: {
     const expenseId = params.splitwiseId.toString();
     console.log("Updating Splitwise expense ID:", expenseId);
 
+    // Combine user notes with auto-generated details
+    let combinedNotes = "";
+    if (params.userNotes) {
+      combinedNotes = params.userNotes + "\n\n---\n\n";
+    }
+    if (params.details) {
+      combinedNotes += params.details;
+    }
+
     // Build the request body as URLSearchParams (Splitwise expects form-encoded data)
     const formData = new URLSearchParams();
 
@@ -204,8 +224,7 @@ export async function updateSplit(params: {
     if (params.date) formData.append("date", params.date);
     if (params.currency) formData.append("currency_code", params.currency);
     if (params.groupId) formData.append("group_id", params.groupId);
-    if (params.notes) formData.append("details", params.notes);
-    else if (params.details) formData.append("details", params.details);
+    if (combinedNotes) formData.append("details", combinedNotes);
 
     // If we have user shares, add them
     if (params.userShares && params.userShares.length > 0) {
@@ -249,11 +268,13 @@ export async function updateSplit(params: {
       amount: params.amount,
       description: params.description,
       currency: params.currency,
-      notes: params.notes,
+      notes: combinedNotes || undefined,
+      userNotes: params.userNotes,
       items: params.items ? JSON.stringify(params.items) : undefined,
       userShares: params.userShares ? JSON.stringify(params.userShares) : undefined,
       tax: params.tax,
       tip: params.tip,
+      payerId: params.payerId,
       participants,
     });
 

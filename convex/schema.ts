@@ -32,7 +32,8 @@ export default defineSchema({
     description: v.string(),
     date: v.string(),
     currency: v.optional(v.string()), // Currency code (USD, EUR, etc.)
-    notes: v.optional(v.string()), // User notes/comments
+    notes: v.optional(v.string()), // Combined notes (user + auto-generated)
+    userNotes: v.optional(v.string()), // User's custom notes only (for preservation on edit)
     splitwiseId: v.optional(v.string()),
     type: v.union(v.literal("manual"), v.literal("auto")),
     status: v.union(v.literal("pending"), v.literal("synced")),
@@ -42,6 +43,8 @@ export default defineSchema({
     userShares: v.optional(v.string()), // JSON stringified per-user breakdown
     tax: v.optional(v.number()),
     tip: v.optional(v.number()),
+    // Who paid the bill (Splitwise user ID)
+    payerId: v.optional(v.string()),
     // All participants (Splitwise user IDs as strings) who can view/edit this split
     participants: v.optional(v.array(v.string())),
   }).index("by_userId", ["userId"]),

@@ -42,6 +42,7 @@ interface EditableItem {
   amount: number;
   quantity?: number;
   assignedTo?: string[];
+  suggestedParticipants?: string[]; // AI-suggested participants based on instructions
 }
 
 interface ItemizedData {
@@ -56,6 +57,8 @@ interface ItemizedData {
   items: EditableItem[];
   selectedGroup?: string;
   selectedFriends?: string[];
+  payerId?: string; // Who paid the bill (for edit mode)
+  userNotes?: string; // User's custom notes (for edit mode)
 }
 
 interface ItemizedSplitModalProps {
@@ -138,8 +141,13 @@ export function ItemizedSplitModal({
     setDate(data.date || new Date().toISOString().split("T")[0]);
     setSelectedGroup(data.selectedGroup || "none");
 
-    // Default paidBy to current user
-    if (currentUser) {
+    // Load user's custom notes if available (edit mode)
+    setNotes(data.userNotes || "");
+
+    // Set paidBy: use stored payerId if available (edit mode), otherwise default to current user
+    if (data.payerId) {
+      setPaidBy(data.payerId);
+    } else if (currentUser) {
       setPaidBy(currentUser.id.toString());
     }
 
@@ -155,9 +163,29 @@ export function ItemizedSplitModal({
 
     const initial: Record<number, string[]> = {};
     data.items?.forEach((item, idx) => {
-      // Use stored assignedTo if available (edit mode), otherwise default to all participants
+      // Priority: 1) stored assignedTo (edit mode), 2) AI-suggested, 3) all participants
       if (item.assignedTo && item.assignedTo.length > 0) {
         initial[idx] = [...item.assignedTo];
+      } else if (item.suggestedParticipants && item.suggestedParticipants.length > 0) {
+        // Map AI-suggested participant names to IDs
+        const suggestedIds: string[] = [];
+        item.suggestedParticipants.forEach((name) => {
+          const nameLower = name.toLowerCase();
+          // Check if it's the current user
+          if (currentUser && currentUser.first_name.toLowerCase() === nameLower) {
+            suggestedIds.push(currentUser.id.toString());
+          } else {
+            // Find matching friend by name
+            const friend = friends.find(
+              (f) => f.first_name.toLowerCase() === nameLower
+            );
+            if (friend) {
+              suggestedIds.push(friend.id.toString());
+            }
+          }
+        });
+        // Use suggested IDs if any matched, otherwise fall back to all
+        initial[idx] = suggestedIds.length > 0 ? suggestedIds : [...participantIds];
       } else {
         initial[idx] = [...participantIds];
       }
@@ -369,7 +397,8 @@ export function ItemizedSplitModal({
           description: data.title || data.restaurantName || "AI Itemized Split",
           date,
           currency,
-          notes,
+          userNotes: notes, // User's custom notes
+          details, // Auto-generated breakdown (regenerated each time)
           groupId: selectedGroup && selectedGroup !== "none" ? selectedGroup : undefined,
           items: splitItems,
           userShares,
@@ -385,9 +414,9 @@ export function ItemizedSplitModal({
           amount: total,
           date,
           currency,
-          notes,
+          userNotes: notes, // User's custom notes
+          details, // Auto-generated breakdown
           groupId: selectedGroup && selectedGroup !== "none" ? selectedGroup : undefined,
-          details,
           type: "auto",
           userShares,
           items: splitItems,

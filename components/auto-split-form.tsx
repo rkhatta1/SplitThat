@@ -17,6 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SharedFormState } from "./new-split-modal";
@@ -35,6 +45,8 @@ export function AutoSplitForm({
   const { data: splitwiseData } = useSplitwiseContext();
   const [processing, setProcessing] = useState(false);
   const [itemizedData, setItemizedData] = useState<any>(null);
+  const [cacheDialogOpen, setCacheDialogOpen] = useState(false);
+  const [cachedResult, setCachedResult] = useState<any>(null);
 
   const friends = splitwiseData?.friends || [];
   const groups = splitwiseData?.groups || [];
@@ -78,14 +90,8 @@ export function AutoSplitForm({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const processReceipt = async (forceReprocess: boolean = false) => {
     if (!formState.file) return;
-
-    if (formState.selectedFriends.length === 0) {
-      toast.error("Please select at least one friend to split with");
-      return;
-    }
 
     setProcessing(true);
     const formData = new FormData();
@@ -115,6 +121,10 @@ export function AutoSplitForm({
       formData.append("splitInstructions", formState.splitInstructions);
     }
 
+    if (forceReprocess) {
+      formData.append("forceReprocess", "true");
+    }
+
     try {
       const response = await fetch("/api/ai/process-receipt", {
         method: "POST",
@@ -127,21 +137,64 @@ export function AutoSplitForm({
 
       const result = await response.json();
 
-      // Add metadata for the modal
-      setItemizedData({
-        ...result,
-        title: formState.title || result.restaurantName || "Receipt Split",
-        selectedGroup: formState.selectedGroup,
-        selectedFriends: formState.selectedFriends,
-      });
+      // Check if this is a cached result and user has instructions
+      if (result._cached && formState.splitInstructions) {
+        // Store the cached result and show dialog
+        setCachedResult(result);
+        setCacheDialogOpen(true);
+        setProcessing(false);
+        return;
+      }
 
-      toast.success("Receipt processed!");
+      // Proceed with the result (either fresh or cached without instructions)
+      openItemizedModal(result);
+      toast.success(result._cached ? "Using cached receipt data" : "Receipt processed!");
     } catch (err) {
       console.error(err);
       toast.error("Failed to process receipt");
     } finally {
       setProcessing(false);
     }
+  };
+
+  const openItemizedModal = (result: any) => {
+    // Remove cache metadata before passing to modal
+    const { _cached, _fileHash, ...cleanResult } = result;
+
+    // Add metadata for the modal
+    setItemizedData({
+      ...cleanResult,
+      title: formState.title || cleanResult.restaurantName || "Receipt Split",
+      selectedGroup: formState.selectedGroup,
+      selectedFriends: formState.selectedFriends,
+    });
+  };
+
+  const handleUseCachedResult = () => {
+    if (cachedResult) {
+      openItemizedModal(cachedResult);
+      toast.success("Using cached receipt data");
+    }
+    setCacheDialogOpen(false);
+    setCachedResult(null);
+  };
+
+  const handleReprocessWithInstructions = async () => {
+    setCacheDialogOpen(false);
+    setCachedResult(null);
+    await processReceipt(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formState.file) return;
+
+    if (formState.selectedFriends.length === 0) {
+      toast.error("Please select at least one friend to split with");
+      return;
+    }
+
+    await processReceipt(false);
   };
 
   return (
@@ -311,6 +364,26 @@ export function AutoSplitForm({
           }}
         />
       )}
+
+      {/* Cache hit dialog - ask user if they want to reprocess with instructions */}
+      <AlertDialog open={cacheDialogOpen} onOpenChange={setCacheDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Receipt Already Processed</AlertDialogTitle>
+            <AlertDialogDescription>
+              This receipt was processed before. You have split instructions that weren&apos;t applied to the cached result. Would you like to:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleUseCachedResult}>
+              Use Cached Result
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleReprocessWithInstructions}>
+              Reprocess with Instructions
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

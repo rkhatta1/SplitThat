@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File;
     const participants = formData.get("participants") as string;
     const splitInstructions = formData.get("splitInstructions") as string;
+    const forceReprocess = formData.get("forceReprocess") === "true";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -26,14 +27,21 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileHash = computeFileHash(buffer);
 
-    // Check cache first
-    const cached = await convex.query(api.receiptCache.getByHash, { fileHash });
-    if (cached) {
-      console.log("Cache hit for file hash:", fileHash);
-      return NextResponse.json(cached.response);
+    // Check cache first (unless force reprocess is requested)
+    if (!forceReprocess) {
+      const cached = await convex.query(api.receiptCache.getByHash, { fileHash });
+      if (cached) {
+        console.log("Cache hit for file hash:", fileHash);
+        // Return cached response with metadata indicating it's from cache
+        return NextResponse.json({
+          ...cached.response,
+          _cached: true,
+          _fileHash: fileHash,
+        });
+      }
     }
 
-    console.log("Cache miss for file hash:", fileHash);
+    console.log(forceReprocess ? "Force reprocessing file" : "Cache miss for file hash:", fileHash);
     const base64Data = buffer.toString("base64");
 
     // Parse participants if provided
