@@ -352,7 +352,8 @@ export function ItemizedSplitModal({
           userShares.push({
             odId: p.id,
             name: p.name,
-            owedShare: bd.total,
+            // Round to 2 decimal places for currency
+            owedShare: Math.round(bd.total * 100) / 100,
             paidShare: p.id === paidBy ? total : 0, // Selected payer paid the whole bill
           });
         }
@@ -370,6 +371,19 @@ export function ItemizedSplitModal({
             paidShare: total,
           });
         }
+      }
+
+      // Fix rounding errors: ensure owed shares sum exactly to total
+      // Splitwise requires the sum of owed shares to equal the total cost
+      const owedSum = userShares.reduce((sum, s) => sum + s.owedShare, 0);
+      const roundedTotal = Math.round(total * 100) / 100;
+      const difference = Math.round((roundedTotal - owedSum) * 100) / 100;
+
+      if (difference !== 0 && userShares.length > 0) {
+        // Find the share with the largest owed amount and adjust it
+        const largestShare = userShares.reduce((max, s) =>
+          s.owedShare > max.owedShare ? s : max, userShares[0]);
+        largestShare.owedShare = Math.round((largestShare.owedShare + difference) * 100) / 100;
       }
 
       // Build items for database storage
