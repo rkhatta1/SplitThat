@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "convex/react";
@@ -111,46 +112,48 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Recent Splits - appears at top on mobile, bottom on desktop */}
-        <SidebarGroup className="order-2 md:order-2 border-b md:border-b-0 md:border-t">
+        <SidebarGroup className="order-2 md:order-2 border-b md:border-b-0 md:border-t flex-1 overflow-hidden">
           <SidebarGroupLabel>Recent Splits</SidebarGroupLabel>
-          <SidebarGroupContent>
-             <SidebarMenu>
-               {recentSplits?.map((split) => (
-                 <SidebarMenuItem key={split._id} className="group/item">
-                   <div className="flex items-center w-full hover:bg-gray-100 pr-1">
-                     <SidebarMenuButton className="h-auto py-2 group-data-[collapsible=icon]:px-2 flex-1 hover:bg-none">
-                       <div className="flex flex-col gap-0.5 min-w-0 group-data-[collapsible=icon]:hidden">
-                         <span className="text-sm font-medium truncate">{split.description}</span>
-                         <span className="text-xs text-muted-foreground">${split.amount.toFixed(2)} • {split.date}</span>
-                       </div>
-                     </SidebarMenuButton>
-                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover/item:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden">
-                       <Button
-                         variant="ghost"
-                         size="icon"
-                         className="h-6 w-6 hover:text-primary cursor-pointer"
-                         onClick={() => handleEdit(split)}
-                       >
-                         <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
-                       </Button>
-                       <Button
-                         variant="ghost"
-                         size="icon"
-                         className="h-6 w-6 hover:text-red-500 cursor-pointer"
-                         onClick={() => handleDelete(split._id)}
-                       >
-                         <HugeiconsIcon icon={Delete02Icon} size={14} />
-                       </Button>
-                     </div>
-                   </div>
-                 </SidebarMenuItem>
-               ))}
-               {(!recentSplits || recentSplits.length === 0) && (
-                 <div className="px-4 py-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                   No recent splits
-                 </div>
-               )}
-             </SidebarMenu>
+          <SidebarGroupContent className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full max-h-[calc(100vh-280px)]">
+              <SidebarMenu>
+                {recentSplits?.map((split) => (
+                  <SidebarMenuItem key={split._id} className="group/item">
+                    <div className="flex items-center w-full hover:bg-gray-100 pr-1">
+                      <SidebarMenuButton className="h-auto py-2 group-data-[collapsible=icon]:px-2 flex-1 hover:bg-none">
+                        <div className="flex flex-col gap-0.5 min-w-0 group-data-[collapsible=icon]:hidden">
+                          <span className="text-sm font-medium truncate">{split.description}</span>
+                          <span className="text-xs text-muted-foreground">${split.amount.toFixed(2)} • {split.date}</span>
+                        </div>
+                      </SidebarMenuButton>
+                      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover/item:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:text-primary cursor-pointer"
+                          onClick={() => handleEdit(split)}
+                        >
+                          <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:text-red-500 cursor-pointer"
+                          onClick={() => handleDelete(split._id)}
+                        >
+                          <HugeiconsIcon icon={Delete02Icon} size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  </SidebarMenuItem>
+                ))}
+                {(!recentSplits || recentSplits.length === 0) && (
+                  <div className="px-4 py-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                    No recent splits
+                  </div>
+                )}
+              </SidebarMenu>
+            </ScrollArea>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

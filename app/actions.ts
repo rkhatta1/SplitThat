@@ -31,14 +31,17 @@ async function getDecryptedAccessToken(userId: string): Promise<string | null> {
 
   console.log("Encrypted token retrieved:", encryptedToken ? `${encryptedToken.substring(0, 20)}...` : "null");
 
-  if (!encryptedToken) return null;
+  if (!encryptedToken) {
+    console.error("No encrypted token found in database for user:", userId);
+    return null;
+  }
 
   try {
     const decrypted = decryptToken(encryptedToken);
     console.log("Token decrypted successfully, length:", decrypted.length);
     return decrypted;
   } catch (error) {
-    console.error("Failed to decrypt access token:", error);
+    console.error("Failed to decrypt access token. This usually means TOKEN_ENCRYPTION_KEY is different from when the token was encrypted:", error);
     return null;
   }
 }
@@ -106,7 +109,9 @@ export async function createSplit(params: {
   if (!session) throw new Error("Not authenticated");
 
   const token = await getDecryptedAccessToken(session.user._id);
-  if (!token) throw new Error("No Splitwise token found");
+  if (!token) {
+    throw new Error("No Splitwise token found. Please log out and log in again to refresh your authentication.");
+  }
 
   const sw = getSplitwiseClient(token);
 
@@ -143,9 +148,28 @@ export async function createSplit(params: {
       expenseParams.split_equally = true;
     }
 
+    console.log("Creating Splitwise expense with params:", JSON.stringify(expenseParams, null, 2));
+
     const res = await sw.expenses.createExpense(expenseParams);
 
+    // Log the full response for debugging
+    console.log("Splitwise createExpense response:", JSON.stringify(res, null, 2));
+
+    // Validate the response - Splitwise returns { expenses: [...] } on success
+    // or { errors: {...} } on failure
+    if ((res as any)?.errors) {
+      console.error("Splitwise API error:", (res as any).errors);
+      throw new Error(`Splitwise API error: ${JSON.stringify((res as any).errors)}`);
+    }
+
     const expenseId = (res as any)?.expenses?.[0]?.id?.toString();
+
+    if (!expenseId) {
+      console.error("No expense ID returned from Splitwise. Full response:", res);
+      throw new Error("Failed to create expense on Splitwise - no expense ID returned");
+    }
+
+    console.log("Successfully created Splitwise expense:", expenseId);
 
     // Extract participant IDs from userShares (all Splitwise user IDs involved)
     const participants = params.userShares
