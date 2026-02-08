@@ -119,14 +119,14 @@ export function AppSidebar() {
               <SidebarMenu>
                 {recentSplits?.map((split) => (
                   <SidebarMenuItem key={split._id} className="group/item">
-                    <div className="flex items-center w-full hover:bg-gray-100 pr-1">
-                      <SidebarMenuButton className="h-auto py-2 group-data-[collapsible=icon]:px-2 flex-1 hover:bg-none">
+                    <div className="flex items-center w-full hover:bg-sidebar-accent rounded-md pr-1">
+                      <SidebarMenuButton className="h-auto py-2 group-data-[collapsible=icon]:px-2 flex-1 hover:bg-transparent">
                         <div className="flex flex-col gap-0.5 min-w-0 group-data-[collapsible=icon]:hidden">
                           <span className="text-sm font-medium truncate">{split.description}</span>
                           <span className="text-xs text-muted-foreground">${split.amount.toFixed(2)} • {split.date}</span>
                         </div>
                       </SidebarMenuButton>
-                      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover/item:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden">
+                      <div className="flex items-center gap-1 shrink-0 opacity-100 md:opacity-0 group-hover/item:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden">
                         <Button
                           variant="ghost"
                           size="icon"
