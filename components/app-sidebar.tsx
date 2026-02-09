@@ -118,19 +118,23 @@ export function AppSidebar() {
             <ScrollArea className="h-full max-h-[calc(100vh-280px)]">
               <SidebarMenu>
                 {recentSplits?.map((split) => (
-                  <SidebarMenuItem key={split._id}>
-                    <div className="group flex items-center w-full hover:bg-sidebar-accent rounded-md pr-1">
-                      <SidebarMenuButton className="h-auto py-2 group-data-[collapsible=icon]:px-2 flex-1 hover:bg-transparent">
-                        <div className="flex flex-col gap-0.5 min-w-0 group-data-[collapsible=icon]:hidden">
-                          <span className="text-sm font-medium truncate">{split.description}</span>
-                          <span className="text-xs text-muted-foreground">${split.amount.toFixed(2)} • {split.date}</span>
-                        </div>
-                      </SidebarMenuButton>
-                      <div className="flex items-center gap-1 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden">
+                  <SidebarMenuItem
+                    key={split._id}
+                    className="group/split"
+                  >
+                    <div className="grid grid-cols-[1fr_auto] items-center w-full rounded-md hover:bg-sidebar-accent transition-colors group-data-[collapsible=icon]:hidden">
+                      {/* Text content - truncates in first column */}
+                      <div className="min-w-0 py-2 px-2">
+                        <p className="text-sm font-medium truncate">{split.description}</p>
+                        <p className="text-xs text-muted-foreground">${split.amount.toFixed(2)} • {split.date}</p>
+                      </div>
+
+                      {/* Action buttons - fixed in second column */}
+                      <div className="flex items-center pr-1 opacity-100 md:opacity-0 md:group-hover/split:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 hover:text-primary cursor-pointer"
+                          className="h-7 w-7 hover:text-primary hover:bg-transparent cursor-pointer"
                           onClick={() => handleEdit(split)}
                         >
                           <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
@@ -138,7 +142,7 @@ export function AppSidebar() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 hover:text-red-500 cursor-pointer"
+                          className="h-7 w-7 hover:text-red-500 hover:bg-transparent cursor-pointer"
                           onClick={() => handleDelete(split._id)}
                         >
                           <HugeiconsIcon icon={Delete02Icon} size={14} />

@@ -157,9 +157,11 @@ export async function createSplit(params: {
 
     // Validate the response - Splitwise returns { expenses: [...] } on success
     // or { errors: {...} } on failure
-    if ((res as any)?.errors) {
-      console.error("Splitwise API error:", (res as any).errors);
-      throw new Error(`Splitwise API error: ${JSON.stringify((res as any).errors)}`);
+    // Note: Splitwise may return an empty errors object {} on success, so we check if it has keys
+    const errors = (res as any)?.errors;
+    if (errors && Object.keys(errors).length > 0) {
+      console.error("Splitwise API error:", errors);
+      throw new Error(`Splitwise API error: ${JSON.stringify(errors)}`);
     }
 
     const expenseId = (res as any)?.expenses?.[0]?.id?.toString();
