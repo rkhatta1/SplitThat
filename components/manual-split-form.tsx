@@ -57,7 +57,7 @@ export function ManualSplitForm({
   // Build list of potential payers (current user + selected friends)
   const potentialPayers = [
     ...(currentUser
-      ? [{ id: currentUser.id.toString(), name: "Me", isCurrentUser: true }]
+      ? [{ id: currentUser.id.toString(), name: currentUser.first_name, isCurrentUser: true }]
       : []),
     ...formState.selectedFriends.map((friendId) => {
       const friend = friends.find((f) => f.id.toString() === friendId);
@@ -129,7 +129,7 @@ export function ManualSplitForm({
       const userShares: UserShare[] = allParticipantIds.map((id) => {
         const friend = friends.find((f) => f.id.toString() === id);
         const isCurrentUser = id === currentUser?.id.toString();
-        const name = isCurrentUser ? "Me" : friend?.first_name || "Unknown";
+        const name = isCurrentUser ? currentUser?.first_name || "Unknown" : friend?.first_name || "Unknown";
 
         return {
           odId: id,
@@ -144,7 +144,9 @@ export function ManualSplitForm({
       if (!payerInParticipants && formState.paidBy) {
         const payerFriend = friends.find((f) => f.id.toString() === formState.paidBy);
         const isPayerCurrentUser = formState.paidBy === currentUser?.id.toString();
-        const payerName = isPayerCurrentUser ? "Me" : payerFriend?.first_name || "Unknown";
+        const payerName = isPayerCurrentUser
+          ? currentUser?.first_name || "Unknown"
+          : payerFriend?.first_name || "Unknown";
 
         userShares.push({
           odId: formState.paidBy,
@@ -258,7 +260,7 @@ export function ManualSplitForm({
           <SelectContent>
             {potentialPayers.map((payer) => (
               <SelectItem key={payer.id} value={payer.id}>
-                {payer.isCurrentUser ? "Me" : payer.name}
+                {payer.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -288,7 +290,7 @@ export function ManualSplitForm({
                     htmlFor="manual-friend-me"
                     className="text-sm font-medium leading-none cursor-pointer"
                   >
-                    Me ({currentUser.first_name})
+                    {currentUser.first_name}
                   </label>
                 </div>
               )}

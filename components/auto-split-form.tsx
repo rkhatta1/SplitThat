@@ -264,7 +264,7 @@ export function AutoSplitForm({
                       htmlFor="auto-friend-me"
                       className="text-sm font-medium leading-none cursor-pointer"
                     >
-                      Me ({currentUser.first_name})
+                      {currentUser.first_name}
                     </label>
                   </div>
                 )}

@@ -2,11 +2,11 @@
 
 export function AppMockup() {
   const items = [
-    { name: "Fresh Banana", price: 1.18, assigned: ["Me", "N", "S"] },
-    { name: "Roma Tomato", price: 2.05, assigned: ["Me", "N"] },
-    { name: "Yellow Onion", price: 3.18, assigned: ["Me", "N", "A"] },
-    { name: "Jalapeno Seasoning", price: 3.48, assigned: ["Me"] },
-    { name: "Microwave Popcorn", price: 4.83, assigned: ["Me", "S"] },
+    { name: "Fresh Banana", price: 1.18, assigned: ["A", "N", "S"] },
+    { name: "Roma Tomato", price: 2.05, assigned: ["A", "N"] },
+    { name: "Yellow Onion", price: 3.18, assigned: ["A", "N", "L"] },
+    { name: "Jalapeno Seasoning", price: 3.48, assigned: ["A"] },
+    { name: "Microwave Popcorn", price: 4.83, assigned: ["A", "S"] },
   ];
 
   return (
@@ -45,7 +45,7 @@ export function AppMockup() {
                   <div
                     key={idx}
                     className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold text-white shadow-sm
-                      ${user === "Me" ? "bg-teal-600 z-10" :
+                      ${user === "A" ? "bg-teal-600 z-10" :
                         user === "N" ? "bg-red-500" :
                         user === "S" ? "bg-slate-700" : "bg-blue-500"}`}
                   >

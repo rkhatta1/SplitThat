@@ -2,7 +2,7 @@
 
 export function MathMockup() {
   const users = [
-    { name: "Me", subtotal: 35.0, tax: 2.8, tip: 5.5, color: "bg-teal-600" },
+    { name: "Ari", subtotal: 35.0, tax: 2.8, tip: 5.5, color: "bg-teal-600" },
     { name: "Kim", subtotal: 12.0, tax: 0.96, tip: 1.61, color: "bg-red-500" },
     { name: "Alex", subtotal: 18.5, tax: 1.48, tip: 1.64, color: "bg-slate-700" },
     { name: "Liz", subtotal: 18.0, tax: 1.44, tip: 1.92, color: "bg-blue-500" },

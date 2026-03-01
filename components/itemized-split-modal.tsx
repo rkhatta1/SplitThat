@@ -613,7 +613,7 @@ export function ItemizedSplitModal({
         const selectedNames = (selections[idx] || [])
           .map((id) => {
             const p = participants.find((p) => p.id === id);
-            return p ? (p.isCurrentUser ? "Me" : p.name) : "Unknown";
+            return p ? p.name : "Unknown";
           })
           .join(", ");
         details += `• ${item.name}: $${item.amount.toFixed(2)} → ${selectedNames || "Unassigned"}\n`;
@@ -626,7 +626,7 @@ export function ItemizedSplitModal({
       participants.forEach((p) => {
         const bd = perPersonBreakdown[p.id];
         if (bd && bd.total > 0) {
-          details += `• ${p.isCurrentUser ? "Me" : p.name}: $${bd.total.toFixed(2)} (items: $${bd.items.toFixed(2)}, tax: $${bd.tax.toFixed(2)}, tip: $${bd.tip.toFixed(2)})\n`;
+          details += `• ${p.name}: $${bd.total.toFixed(2)} (items: $${bd.items.toFixed(2)}, tax: $${bd.tax.toFixed(2)}, tip: $${bd.tip.toFixed(2)})\n`;
         }
       });
 
@@ -830,7 +830,7 @@ export function ItemizedSplitModal({
                         title={participant.name}
                       >
                         {participant.isCurrentUser ? (
-                          <span>Me</span>
+                          <span>{participant.name}</span>
                         ) : (
                           <>
                             <Avatar className="h-3.5 w-3.5">
@@ -904,7 +904,7 @@ export function ItemizedSplitModal({
                               title={participant.name}
                             >
                               {participant.isCurrentUser ? (
-                                <span>Me</span>
+                                <span>{participant.name}</span>
                               ) : (
                                 <>
                                   <Avatar className="h-4 w-4">
@@ -1034,7 +1034,7 @@ export function ItemizedSplitModal({
                   <SelectContent>
                     {participants.map((p) => (
                       <SelectItem key={p.id} value={p.id} className="text-xs">
-                        {p.isCurrentUser ? "Me" : p.name}
+                        {p.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1098,7 +1098,7 @@ export function ItemizedSplitModal({
                     <SelectContent>
                       {participants.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.isCurrentUser ? "Me" : p.name}
+                          {p.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1159,7 +1159,7 @@ export function ItemizedSplitModal({
                       className="flex items-center gap-2 p-2 rounded-md bg-muted/50"
                     >
                       {p.isCurrentUser ? (
-                        <span className="text-xs font-medium">Me</span>
+                        <span className="text-xs md:text-sm font-medium">{p.name}</span>
                       ) : (
                         <Avatar className="h-4 w-4 md:h-5 md:w-5">
                           <AvatarImage src={p.picture} />
@@ -1168,7 +1168,7 @@ export function ItemizedSplitModal({
                           </AvatarFallback>
                         </Avatar>
                       )}
-                      <span className="text-xs md:text-sm">{p.isCurrentUser ? "" : p.name}</span>
+                      {!p.isCurrentUser && <span className="text-xs md:text-sm">{p.name}</span>}
                       <span className="ml-auto font-medium text-xs md:text-sm">
                         ${bd.total.toFixed(2)}
                       </span>

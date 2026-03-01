@@ -105,7 +105,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
   // Build list of potential payers
   const potentialPayers = [
     ...(currentUser
-      ? [{ id: currentUser.id.toString(), name: "Me", isCurrentUser: true }]
+      ? [{ id: currentUser.id.toString(), name: currentUser.first_name, isCurrentUser: true }]
       : []),
     ...selectedFriends.map((friendId) => {
       const friend = friends.find((f) => f.id.toString() === friendId);
@@ -175,7 +175,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
       const userShares: UserShare[] = allParticipantIds.map((id) => {
         const friend = friends.find((f) => f.id.toString() === id);
         const isCurrentUser = id === currentUser?.id.toString();
-        const name = isCurrentUser ? "Me" : friend?.first_name || "Unknown";
+        const name = isCurrentUser ? currentUser?.first_name || "Unknown" : friend?.first_name || "Unknown";
 
         return {
           odId: id,
@@ -190,7 +190,9 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
       if (!payerInParticipants && paidBy) {
         const payerFriend = friends.find((f) => f.id.toString() === paidBy);
         const isPayerCurrentUser = paidBy === currentUser?.id.toString();
-        const payerName = isPayerCurrentUser ? "Me" : payerFriend?.first_name || "Unknown";
+        const payerName = isPayerCurrentUser
+          ? currentUser?.first_name || "Unknown"
+          : payerFriend?.first_name || "Unknown";
 
         userShares.push({
           odId: paidBy,
@@ -316,7 +318,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
               <SelectContent>
                 {potentialPayers.map((payer) => (
                   <SelectItem key={payer.id} value={payer.id}>
-                    {payer.isCurrentUser ? "Me" : payer.name}
+                    {payer.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -346,7 +348,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
                         htmlFor="edit-friend-me"
                         className="text-sm font-medium leading-none cursor-pointer"
                       >
-                        Me ({currentUser.first_name})
+                        {currentUser.first_name}
                       </label>
                     </div>
                   )}
