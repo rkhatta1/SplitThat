@@ -89,6 +89,43 @@ export interface SplitItem {
   assignedTo: string[]; // User IDs
 }
 
+function roundToCents(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeUserSharesForTotal(
+  userShares: UserShare[],
+  totalAmount: number
+): UserShare[] {
+  const normalized = userShares.map((share) => ({
+    ...share,
+    owedShare: roundToCents(share.owedShare),
+    paidShare: roundToCents(share.paidShare),
+  }));
+
+  if (normalized.length === 0) {
+    return normalized;
+  }
+
+  const roundedTotal = roundToCents(totalAmount);
+  const owedSum = roundToCents(
+    normalized.reduce((sum, share) => sum + share.owedShare, 0)
+  );
+  const difference = roundToCents(roundedTotal - owedSum);
+
+  if (difference !== 0) {
+    const candidates = normalized.filter((share) => share.owedShare > 0);
+    const shareToAdjust = (candidates.length > 0 ? candidates : normalized).reduce(
+      (max, share) => (share.owedShare > max.owedShare ? share : max),
+      normalized[0]
+    );
+
+    shareToAdjust.owedShare = roundToCents(shareToAdjust.owedShare + difference);
+  }
+
+  return normalized;
+}
+
 export async function createSplit(params: {
   description: string;
   amount: number;
@@ -116,6 +153,11 @@ export async function createSplit(params: {
   const sw = getSplitwiseClient(token);
 
   try {
+    const normalizedUserShares =
+      params.userShares && params.userShares.length > 0
+        ? normalizeUserSharesForTotal(params.userShares, params.amount)
+        : undefined;
+
     // Combine user notes with auto-generated details
     let combinedNotes = "";
     if (params.userNotes) {
@@ -136,9 +178,9 @@ export async function createSplit(params: {
     };
 
     // If we have user shares, use them instead of split_equally
-    if (params.userShares && params.userShares.length > 0) {
+    if (normalizedUserShares && normalizedUserShares.length > 0) {
       // Add each user's share with indexed keys
-      params.userShares.forEach((share, index) => {
+      normalizedUserShares.forEach((share, index) => {
         expenseParams[`users__${index}__user_id`] = parseInt(share.odId);
         expenseParams[`users__${index}__paid_share`] = share.paidShare.toFixed(2);
         expenseParams[`users__${index}__owed_share`] = share.owedShare.toFixed(2);
@@ -174,8 +216,8 @@ export async function createSplit(params: {
     console.log("Successfully created Splitwise expense:", expenseId);
 
     // Extract participant IDs from userShares (all Splitwise user IDs involved)
-    const participants = params.userShares
-      ? params.userShares.map((share) => share.odId)
+    const participants = normalizedUserShares
+      ? normalizedUserShares.map((share) => share.odId)
       : undefined;
 
     // Save to Convex with detailed breakdown
@@ -192,7 +234,9 @@ export async function createSplit(params: {
       groupId: params.groupId,
       splitwiseId: expenseId,
       items: params.items ? JSON.stringify(params.items) : undefined,
-      userShares: params.userShares ? JSON.stringify(params.userShares) : undefined,
+      userShares: normalizedUserShares
+        ? JSON.stringify(normalizedUserShares)
+        : undefined,
       tax: params.tax,
       tip: params.tip,
       payerId: params.payerId,
@@ -230,6 +274,15 @@ export async function updateSplit(params: {
   if (!token) throw new Error("No Splitwise token found");
 
   try {
+    const normalizedUserShares =
+      params.userShares && params.userShares.length > 0
+        ? normalizeUserSharesForTotal(
+            params.userShares,
+            params.amount ??
+              params.userShares.reduce((sum, share) => sum + share.owedShare, 0)
+          )
+        : undefined;
+
     const expenseId = params.splitwiseId.toString();
     console.log("Updating Splitwise expense ID:", expenseId);
 
@@ -253,8 +306,8 @@ export async function updateSplit(params: {
     if (combinedNotes) formData.append("details", combinedNotes);
 
     // If we have user shares, add them
-    if (params.userShares && params.userShares.length > 0) {
-      params.userShares.forEach((share, index) => {
+    if (normalizedUserShares && normalizedUserShares.length > 0) {
+      normalizedUserShares.forEach((share, index) => {
         formData.append(`users__${index}__user_id`, share.odId);
         formData.append(`users__${index}__paid_share`, share.paidShare.toFixed(2));
         formData.append(`users__${index}__owed_share`, share.owedShare.toFixed(2));
@@ -284,8 +337,8 @@ export async function updateSplit(params: {
     console.log("Splitwise update successful:", result);
 
     // Extract participant IDs from userShares
-    const participants = params.userShares
-      ? params.userShares.map((share) => share.odId)
+    const participants = normalizedUserShares
+      ? normalizedUserShares.map((share) => share.odId)
       : undefined;
 
     // Update in Convex
@@ -297,7 +350,9 @@ export async function updateSplit(params: {
       notes: combinedNotes || undefined,
       userNotes: params.userNotes,
       items: params.items ? JSON.stringify(params.items) : undefined,
-      userShares: params.userShares ? JSON.stringify(params.userShares) : undefined,
+      userShares: normalizedUserShares
+        ? JSON.stringify(normalizedUserShares)
+        : undefined,
       tax: params.tax,
       tip: params.tip,
       payerId: params.payerId,
