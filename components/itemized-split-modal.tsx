@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createSplit, updateSplit, type UserShare, type SplitItem } from "@/app/actions";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
@@ -35,7 +35,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useSplitwiseContext } from "@/lib/splitwise-context";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 
 interface EditableItem {
   name: string;
@@ -68,6 +68,50 @@ interface ItemizedSplitModalProps {
   onSuccess: () => void;
   editMode?: boolean;
   splitId?: Id<"splits">;
+}
+
+interface UndoSplitAction {
+  targetIndex: number;
+  originalItem: EditableItem;
+  originalSelection: string[];
+  insertedCount: number;
+  version: number;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+
+function roundToCents(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function buildSplitAmounts(total: number, fractions: number[]): number[] {
+  if (fractions.length === 0) {
+    return [];
+  }
+
+  const fractionTotal = fractions.reduce((sum, fraction) => sum + fraction, 0);
+  if (fractionTotal <= 0) {
+    return [];
+  }
+
+  const amounts = fractions.map((fraction) =>
+    roundToCents((total * fraction) / fractionTotal)
+  );
+
+  const roundedTotal = roundToCents(total);
+  const currentSum = roundToCents(amounts.reduce((sum, amount) => sum + amount, 0));
+  const difference = roundToCents(roundedTotal - currentSum);
+
+  if (difference !== 0) {
+    const largestFractionIndex = fractions.reduce(
+      (maxIdx, fraction, idx) => (fraction > fractions[maxIdx] ? idx : maxIdx),
+      0
+    );
+    amounts[largestFractionIndex] = roundToCents(
+      amounts[largestFractionIndex] + difference
+    );
+  }
+
+  return amounts;
 }
 
 export function ItemizedSplitModal({
@@ -123,9 +167,40 @@ export function ItemizedSplitModal({
   const [selections, setSelections] = useState<Record<number, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [paidBy, setPaidBy] = useState<string>("");
+  const [splitTargetIndex, setSplitTargetIndex] = useState<number | null>(null);
+  const [splitFractions, setSplitFractions] = useState<string[]>(["1", "1"]);
+  const itemEditVersionRef = useRef(0);
+  const undoSplitActionsRef = useRef<Map<string, UndoSplitAction>>(new Map());
+
+  const bumpItemEditVersion = () => {
+    itemEditVersionRef.current += 1;
+    return itemEditVersionRef.current;
+  };
+
+  const splitTargetItem =
+    splitTargetIndex !== null ? items[splitTargetIndex] ?? null : null;
+
+  const splitPreviewAmounts = useMemo(() => {
+    if (!splitTargetItem) {
+      return [];
+    }
+
+    const parsedFractions = splitFractions.map((fraction) => parseFloat(fraction));
+    if (parsedFractions.some((fraction) => !isFinite(fraction) || fraction <= 0)) {
+      return [];
+    }
+
+    return buildSplitAmounts(splitTargetItem.amount, parsedFractions);
+  }, [splitFractions, splitTargetItem]);
 
   // Initialize state when data changes
   useEffect(() => {
+    undoSplitActionsRef.current.forEach((action) => {
+      clearTimeout(action.timeoutId);
+    });
+    undoSplitActionsRef.current.clear();
+    itemEditVersionRef.current = 0;
+
     // Set items
     setItems(data.items?.map((item) => ({
       name: item.name,
@@ -193,6 +268,16 @@ export function ItemizedSplitModal({
     setSelections(initial);
   }, [data, currentUser, friends]);
 
+  useEffect(() => {
+    const undoActions = undoSplitActionsRef.current;
+    return () => {
+      undoActions.forEach((action) => {
+        clearTimeout(action.timeoutId);
+      });
+      undoActions.clear();
+    };
+  }, []);
+
   // Calculate subtotal from items
   const subtotal = useMemo(() => {
     return items.reduce((sum, item) => sum + (item.amount || 0), 0);
@@ -249,6 +334,7 @@ export function ItemizedSplitModal({
   }, [items, selections, tax, tip, participants]);
 
   const updateItemName = (idx: number, name: string) => {
+    bumpItemEditVersion();
     setItems((prev) => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], name };
@@ -257,6 +343,7 @@ export function ItemizedSplitModal({
   };
 
   const updateItemAmount = (idx: number, amount: number) => {
+    bumpItemEditVersion();
     setItems((prev) => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], amount: isNaN(amount) ? 0 : amount };
@@ -265,6 +352,7 @@ export function ItemizedSplitModal({
   };
 
   const toggleSelection = (itemIdx: number, participantId: string) => {
+    bumpItemEditVersion();
     setSelections((prev) => {
       const current = prev[itemIdx] || [];
       if (current.includes(participantId)) {
@@ -276,6 +364,7 @@ export function ItemizedSplitModal({
   };
 
   const selectAllForItem = (itemIdx: number) => {
+    bumpItemEditVersion();
     setSelections((prev) => ({
       ...prev,
       [itemIdx]: participants.map((p) => p.id),
@@ -283,6 +372,7 @@ export function ItemizedSplitModal({
   };
 
   const deleteItem = (idx: number) => {
+    bumpItemEditVersion();
     // Remove the item
     setItems((prev) => prev.filter((_, i) => i !== idx));
 
@@ -299,6 +389,204 @@ export function ItemizedSplitModal({
         // Skip the deleted index
       });
       return updated;
+    });
+  };
+
+  const insertItemAfter = (idx: number) => {
+    bumpItemEditVersion();
+    setItems((prev) => {
+      const updated = [...prev];
+      updated.splice(idx + 1, 0, {
+        name: "New item",
+        amount: 0,
+      });
+      return updated;
+    });
+
+    setSelections((prev) => {
+      const updated: Record<number, string[]> = {};
+      Object.keys(prev).forEach((key) => {
+        const keyNum = parseInt(key);
+        if (keyNum <= idx) {
+          updated[keyNum] = prev[keyNum];
+        } else {
+          updated[keyNum + 1] = prev[keyNum];
+        }
+      });
+
+      updated[idx + 1] = participants.map((p) => p.id);
+      return updated;
+    });
+  };
+
+  const openSplitItemModal = (idx: number) => {
+    setSplitTargetIndex(idx);
+    setSplitFractions(["1", "1"]);
+  };
+
+  const closeSplitItemModal = () => {
+    setSplitTargetIndex(null);
+    setSplitFractions(["1", "1"]);
+  };
+
+  const updateSplitFraction = (idx: number, value: string) => {
+    if (value !== "" && !/^\d*\.?\d*$/.test(value)) {
+      return;
+    }
+
+    setSplitFractions((prev) => {
+      const updated = [...prev];
+      updated[idx] = value;
+      return updated;
+    });
+  };
+
+  const addSplitFraction = () => {
+    setSplitFractions((prev) => {
+      if (prev.length >= 10) {
+        return prev;
+      }
+      return [...prev, "1"];
+    });
+  };
+
+  const handleUndoItemSplit = (undoId: string) => {
+    const undoAction = undoSplitActionsRef.current.get(undoId);
+    if (!undoAction) {
+      return;
+    }
+
+    undoSplitActionsRef.current.delete(undoId);
+    clearTimeout(undoAction.timeoutId);
+    toast.dismiss(undoId);
+
+    if (itemEditVersionRef.current !== undoAction.version) {
+      toast.error("Unable to undo after other edits");
+      return;
+    }
+
+    const { targetIndex, insertedCount, originalItem, originalSelection } = undoAction;
+
+    setItems((prev) => {
+      const updated = [...prev];
+      updated.splice(targetIndex, insertedCount, { ...originalItem });
+      return updated;
+    });
+
+    setSelections((prev) => {
+      const updated: Record<number, string[]> = {};
+      Object.keys(prev).forEach((key) => {
+        const keyNum = Number(key);
+        if (Number.isNaN(keyNum)) {
+          return;
+        }
+
+        if (keyNum < targetIndex) {
+          updated[keyNum] = [...prev[keyNum]];
+        } else if (keyNum >= targetIndex + insertedCount) {
+          updated[keyNum - (insertedCount - 1)] = [...prev[keyNum]];
+        }
+      });
+
+      updated[targetIndex] = [...originalSelection];
+      return updated;
+    });
+
+    bumpItemEditVersion();
+    toast.success("Split undone");
+  };
+
+  const applyItemSplit = () => {
+    if (splitTargetIndex === null || !splitTargetItem) {
+      return;
+    }
+
+    if (splitFractions.length < 2) {
+      toast.error("Please provide at least two fractions");
+      return;
+    }
+
+    const parsedFractions = splitFractions.map((fraction) => parseFloat(fraction));
+    if (parsedFractions.some((fraction) => !isFinite(fraction) || fraction <= 0)) {
+      toast.error("Fractions must be positive numbers");
+      return;
+    }
+
+    const splitAmounts = buildSplitAmounts(splitTargetItem.amount, parsedFractions);
+    if (splitAmounts.length !== parsedFractions.length) {
+      toast.error("Unable to split item with the provided fractions");
+      return;
+    }
+
+    const splitCount = parsedFractions.length;
+    const baseName = splitTargetItem.name?.trim() || "Item";
+    const baseSelection =
+      selections[splitTargetIndex] ?? participants.map((participant) => participant.id);
+    const originalItem = { ...splitTargetItem };
+    const originalSelection = [...baseSelection];
+
+    const newItems = splitAmounts.map((amount, idx) => ({
+      ...splitTargetItem,
+      name: `${baseName} (${idx + 1}/${splitCount})`,
+      amount,
+    }));
+
+    setItems((prev) => {
+      const updated = [...prev];
+      updated.splice(splitTargetIndex, 1, ...newItems);
+      return updated;
+    });
+
+    setSelections((prev) => {
+      const updated: Record<number, string[]> = {};
+      Object.keys(prev).forEach((key) => {
+        const keyNum = Number(key);
+        if (Number.isNaN(keyNum)) {
+          return;
+        }
+
+        if (keyNum < splitTargetIndex) {
+          updated[keyNum] = [...prev[keyNum]];
+        } else if (keyNum > splitTargetIndex) {
+          updated[keyNum + splitCount - 1] = [...prev[keyNum]];
+        }
+      });
+
+      for (let idx = 0; idx < splitCount; idx++) {
+        updated[splitTargetIndex + idx] = [...baseSelection];
+      }
+
+      return updated;
+    });
+
+    const versionAfterSplit = bumpItemEditVersion();
+    const undoId = `undo-split-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const timeoutId = setTimeout(() => {
+      const action = undoSplitActionsRef.current.get(undoId);
+      if (!action) {
+        return;
+      }
+      clearTimeout(action.timeoutId);
+      undoSplitActionsRef.current.delete(undoId);
+    }, 10000);
+
+    undoSplitActionsRef.current.set(undoId, {
+      targetIndex: splitTargetIndex,
+      originalItem,
+      originalSelection,
+      insertedCount: splitCount,
+      version: versionAfterSplit,
+      timeoutId,
+    });
+
+    closeSplitItemModal();
+    toast.success(`Item split into ${splitCount} items`, {
+      id: undoId,
+      duration: 10000,
+      action: {
+        label: "Undo",
+        onClick: () => handleUndoItemSplit(undoId),
+      },
     });
   };
 
@@ -450,8 +738,12 @@ export function ItemizedSplitModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[75%] max-h-[90vh] flex flex-col overflow-hidden">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="sm:max-w-[75%] max-h-[90vh] flex flex-col overflow-hidden"
+          onInteractOutside={(event) => event.preventDefault()}
+        >
         <DialogHeader className="flex flex-row gap-2 items-center">
           <DialogTitle>
             {editMode ? "Edit Split: " : ""}{data.title || data.restaurantName || "Itemized Split"}
@@ -496,14 +788,32 @@ export function ItemizedSplitModal({
                         className="h-7 text-xs w-16"
                       />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => deleteItem(idx)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                      title="Delete item"
-                    >
-                      <HugeiconsIcon icon={Delete02Icon} size={14} />
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => openSplitItemModal(idx)}
+                        className="px-1.5 py-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary text-[10px] font-medium transition-colors"
+                        title="Split item"
+                      >
+                        Split
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertItemAfter(idx)}
+                        className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                        title="Add item below"
+                      >
+                        <HugeiconsIcon icon={Add01Icon} size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteItem(idx)}
+                        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Delete item"
+                      >
+                        <HugeiconsIcon icon={Delete02Icon} size={14} />
+                      </button>
+                    </div>
                   </div>
                   {/* Row 2: Participant pills */}
                   <div className="flex flex-wrap gap-1.5">
@@ -554,7 +864,7 @@ export function ItemizedSplitModal({
                     <TableHead className="w-[50%]">Item</TableHead>
                     <TableHead className="w-[15%]">Amount</TableHead>
                     <TableHead>Who&apos;s paying?</TableHead>
-                    <TableHead className="w-[40px]"></TableHead>
+                    <TableHead className="w-[132px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -618,14 +928,32 @@ export function ItemizedSplitModal({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <button
-                          type="button"
-                          onClick={() => deleteItem(idx)}
-                          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                          title="Delete item"
-                        >
-                          <HugeiconsIcon icon={Delete02Icon} size={16} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openSplitItemModal(idx)}
+                            className="px-2 py-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary text-xs font-medium transition-colors"
+                            title="Split item"
+                          >
+                            Split
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertItemAfter(idx)}
+                            className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                            title="Add item below"
+                          >
+                            <HugeiconsIcon icon={Add01Icon} size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteItem(idx)}
+                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Delete item"
+                          >
+                            <HugeiconsIcon icon={Delete02Icon} size={16} />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -862,7 +1190,78 @@ export function ItemizedSplitModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={splitTargetIndex !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeSplitItemModal();
+          }
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-[460px]"
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              Split {splitTargetItem?.name || "Item"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Original amount: ${splitTargetItem?.amount?.toFixed(2) || "0.00"}
+            </p>
+
+            <div className="space-y-2 max-h-64 overflow-auto pr-1">
+              {splitFractions.map((fraction, idx) => (
+                <div key={idx} className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                    Part {idx + 1}
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={fraction}
+                    onChange={(e) => updateSplitFraction(idx, e.target.value)}
+                    placeholder="1"
+                    className="h-8"
+                  />
+                  <span className="text-xs font-medium whitespace-nowrap">
+                    {splitPreviewAmounts[idx] !== undefined
+                      ? `$${splitPreviewAmounts[idx].toFixed(2)}`
+                      : "--"}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addSplitFraction}
+              disabled={splitFractions.length >= 10}
+              className="w-full"
+            >
+              {splitFractions.length >= 10
+                ? "Maximum 10 sub-items"
+                : `Add sub-item (${splitFractions.length}/10)`}
+            </Button>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={closeSplitItemModal}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={applyItemSplit}>
+                Split item
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
