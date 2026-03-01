@@ -34,6 +34,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useSplitwiseContext } from "@/lib/splitwise-context";
+import { buildParticipantNameMaps } from "@/lib/participant-names";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 
@@ -139,22 +140,41 @@ export function ItemizedSplitModal({
   );
 
   // Build participant list (current user + selected friends)
-  const participants = useMemo(() => [
-    ...(currentUser
-      ? [{
-          id: currentUser.id.toString(),
-          name: currentUser.first_name,
-          picture: currentUser.picture?.small as string | undefined,
-          isCurrentUser: true,
-        }]
-      : []),
-    ...friends.map((f) => ({
-      id: f.id.toString(),
-      name: f.first_name,
-      picture: f.picture?.small as string | undefined,
-      isCurrentUser: false,
-    })),
-  ], [currentUser, friends]);
+  const participants = useMemo(() => {
+    const rawParticipants = [
+      ...(currentUser
+        ? [{
+            id: currentUser.id.toString(),
+            firstName: currentUser.first_name as string | null | undefined,
+            lastName: currentUser.last_name as string | null | undefined,
+            picture: currentUser.picture?.small as string | undefined,
+            isCurrentUser: true,
+          }]
+        : []),
+      ...friends.map((friend) => ({
+        id: friend.id.toString(),
+        firstName: friend.first_name as string | null | undefined,
+        lastName: friend.last_name as string | null | undefined,
+        picture: friend.picture?.small as string | undefined,
+        isCurrentUser: false,
+      })),
+    ];
+
+    const { displayNameById, commentNameById } = buildParticipantNameMaps(
+      rawParticipants.map((participant) => ({
+        id: participant.id,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+      }))
+    );
+
+    return rawParticipants.map((participant) => ({
+      ...participant,
+      name: displayNameById[participant.id] || participant.firstName || "Unknown",
+      commentName:
+        commentNameById[participant.id] || participant.firstName || "Unknown",
+    }));
+  }, [currentUser, friends]);
 
   // Editable items state
   const [items, setItems] = useState<EditableItem[]>([]);
@@ -227,14 +247,27 @@ export function ItemizedSplitModal({
     }
 
     // Initialize selections
-    // Compute participant IDs directly to avoid circular dependency
-    const participantIds: string[] = [];
-    if (currentUser) {
-      participantIds.push(currentUser.id.toString());
-    }
-    friends.forEach((f) => {
-      participantIds.push(f.id.toString());
-    });
+    const participantIds = participants.map((participant) => participant.id);
+
+    const normalize = (value: string) => value.trim().toLowerCase();
+
+    const findParticipantBySuggestedName = (suggestedName: string) => {
+      const suggested = normalize(suggestedName);
+      return participants.find((participant) => {
+        const firstName = normalize(participant.firstName || "");
+        const lastName = normalize(participant.lastName || "");
+        const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+        const displayName = normalize(participant.name);
+        const commentName = normalize(participant.commentName);
+
+        return (
+          suggested === firstName ||
+          suggested === fullName ||
+          suggested === displayName ||
+          suggested === commentName
+        );
+      });
+    };
 
     const initial: Record<number, string[]> = {};
     data.items?.forEach((item, idx) => {
@@ -245,18 +278,9 @@ export function ItemizedSplitModal({
         // Map AI-suggested participant names to IDs
         const suggestedIds: string[] = [];
         item.suggestedParticipants.forEach((name) => {
-          const nameLower = name.toLowerCase();
-          // Check if it's the current user
-          if (currentUser && currentUser.first_name.toLowerCase() === nameLower) {
-            suggestedIds.push(currentUser.id.toString());
-          } else {
-            // Find matching friend by name
-            const friend = friends.find(
-              (f) => f.first_name.toLowerCase() === nameLower
-            );
-            if (friend) {
-              suggestedIds.push(friend.id.toString());
-            }
+          const participant = findParticipantBySuggestedName(name);
+          if (participant) {
+            suggestedIds.push(participant.id);
           }
         });
         // Use suggested IDs if any matched, otherwise fall back to all
@@ -266,7 +290,7 @@ export function ItemizedSplitModal({
       }
     });
     setSelections(initial);
-  }, [data, currentUser, friends]);
+  }, [data, currentUser, participants]);
 
   useEffect(() => {
     const undoActions = undoSplitActionsRef.current;
@@ -613,7 +637,7 @@ export function ItemizedSplitModal({
         const selectedNames = (selections[idx] || [])
           .map((id) => {
             const p = participants.find((p) => p.id === id);
-            return p ? p.name : "Unknown";
+            return p ? p.commentName : "Unknown";
           })
           .join(", ");
         details += `• ${item.name}: $${item.amount.toFixed(2)} → ${selectedNames || "Unassigned"}\n`;
@@ -626,7 +650,7 @@ export function ItemizedSplitModal({
       participants.forEach((p) => {
         const bd = perPersonBreakdown[p.id];
         if (bd && bd.total > 0) {
-          details += `• ${p.name}: $${bd.total.toFixed(2)} (items: $${bd.items.toFixed(2)}, tax: $${bd.tax.toFixed(2)}, tip: $${bd.tip.toFixed(2)})\n`;
+          details += `• ${p.commentName}: $${bd.total.toFixed(2)} (items: $${bd.items.toFixed(2)}, tax: $${bd.tax.toFixed(2)}, tip: $${bd.tip.toFixed(2)})\n`;
         }
       });
 

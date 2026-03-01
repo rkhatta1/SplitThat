@@ -28,6 +28,7 @@ import { api } from "../convex/_generated/api";
 import { toast } from "sonner";
 import type { Id } from "../convex/_generated/dataModel";
 import { updateSplit, type UserShare } from "@/app/actions";
+import { buildParticipantNameMaps } from "@/lib/participant-names";
 
 interface ManualEditModalProps {
   split: any;
@@ -102,18 +103,76 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
         })
       : friends;
 
+  const splitWithCandidates = useMemo(
+    () => [
+      ...(currentUser
+        ? [{
+            id: currentUser.id.toString(),
+            firstName: currentUser.first_name as string | null | undefined,
+            lastName: currentUser.last_name as string | null | undefined,
+          }]
+        : []),
+      ...filteredFriends.map((friend) => ({
+        id: friend.id.toString(),
+        firstName: friend.first_name as string | null | undefined,
+        lastName: friend.last_name as string | null | undefined,
+      })),
+    ],
+    [currentUser, filteredFriends]
+  );
+
+  const splitWithNameMaps = useMemo(
+    () => buildParticipantNameMaps(splitWithCandidates),
+    [splitWithCandidates]
+  );
+
   // Build list of potential payers
-  const potentialPayers = [
-    ...(currentUser
-      ? [{ id: currentUser.id.toString(), name: currentUser.first_name, isCurrentUser: true }]
-      : []),
-    ...selectedFriends.map((friendId) => {
-      const friend = friends.find((f) => f.id.toString() === friendId);
-      return friend
-        ? { id: friend.id.toString(), name: friend.first_name, isCurrentUser: false }
-        : null;
-    }).filter(Boolean) as { id: string; name: string; isCurrentUser: boolean }[],
-  ];
+  const potentialPayers = useMemo(() => {
+    type RawPayer = {
+      id: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      isCurrentUser: boolean;
+    };
+
+    const rawPayers = [
+      ...(currentUser
+        ? [{
+            id: currentUser.id.toString(),
+            firstName: currentUser.first_name as string | null | undefined,
+            lastName: currentUser.last_name as string | null | undefined,
+            isCurrentUser: true,
+          }]
+        : []),
+      ...selectedFriends.flatMap((friendId) => {
+        const friend = friends.find((f) => f.id.toString() === friendId);
+        return friend
+          ? [{
+              id: friend.id.toString(),
+              firstName: friend.first_name as string | null | undefined,
+              lastName: friend.last_name as string | null | undefined,
+              isCurrentUser: false,
+            }]
+          : [];
+      }),
+    ] as RawPayer[];
+
+    const nameMaps = buildParticipantNameMaps(rawPayers);
+
+    return rawPayers.map((payer) => ({
+      id: payer.id,
+      name: nameMaps.displayNameById[payer.id] || payer.firstName || "Unknown",
+      isCurrentUser: payer.isCurrentUser,
+    }));
+  }, [currentUser, selectedFriends, friends]);
+
+  const payerDisplayNameById = useMemo(() => {
+    const displayNameById: Record<string, string> = {};
+    potentialPayers.forEach((payer) => {
+      displayNameById[payer.id] = payer.name;
+    });
+    return displayNameById;
+  }, [potentialPayers]);
 
   const toggleFriend = (friendId: string) => {
     const newSelection = selectedFriends.includes(friendId)
@@ -175,7 +234,10 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
       const userShares: UserShare[] = allParticipantIds.map((id) => {
         const friend = friends.find((f) => f.id.toString() === id);
         const isCurrentUser = id === currentUser?.id.toString();
-        const name = isCurrentUser ? currentUser?.first_name || "Unknown" : friend?.first_name || "Unknown";
+        const fallbackName = isCurrentUser
+          ? currentUser?.first_name || "Unknown"
+          : friend?.first_name || "Unknown";
+        const name = payerDisplayNameById[id] || fallbackName;
 
         return {
           odId: id,
@@ -190,9 +252,10 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
       if (!payerInParticipants && paidBy) {
         const payerFriend = friends.find((f) => f.id.toString() === paidBy);
         const isPayerCurrentUser = paidBy === currentUser?.id.toString();
-        const payerName = isPayerCurrentUser
+        const fallbackPayerName = isPayerCurrentUser
           ? currentUser?.first_name || "Unknown"
           : payerFriend?.first_name || "Unknown";
+        const payerName = payerDisplayNameById[paidBy] || fallbackPayerName;
 
         userShares.push({
           odId: paidBy,
@@ -348,7 +411,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
                         htmlFor="edit-friend-me"
                         className="text-sm font-medium leading-none cursor-pointer"
                       >
-                        {currentUser.first_name}
+                        {splitWithNameMaps.displayNameById[currentUser.id.toString()] || currentUser.first_name}
                       </label>
                     </div>
                   )}
@@ -363,7 +426,7 @@ function ManualEditModal({ split, open, onOpenChange, onSuccess }: ManualEditMod
                         htmlFor={`edit-friend-${friend.id}`}
                         className="text-sm font-medium leading-none cursor-pointer"
                       >
-                        {friend.first_name} {friend.last_name || ""}
+                        {splitWithNameMaps.displayNameById[friend.id.toString()] || friend.first_name}
                       </label>
                     </div>
                   ))}

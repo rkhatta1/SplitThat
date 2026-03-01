@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { buildParticipantNameMaps } from "@/lib/participant-names";
 import type { SharedFormState } from "./new-split-modal";
 
 interface AutoSplitFormProps {
@@ -60,6 +61,52 @@ export function AutoSplitForm({
         return group.members.some((m: any) => m.id === friend.id);
       })
     : friends;
+
+  const splitWithCandidates = useMemo(
+    () => [
+      ...(currentUser
+        ? [{
+            id: currentUser.id.toString(),
+            firstName: currentUser.first_name as string | null | undefined,
+            lastName: currentUser.last_name as string | null | undefined,
+          }]
+        : []),
+      ...filteredFriends.map((friend) => ({
+        id: friend.id.toString(),
+        firstName: friend.first_name as string | null | undefined,
+        lastName: friend.last_name as string | null | undefined,
+      })),
+    ],
+    [currentUser, filteredFriends]
+  );
+
+  const splitWithNameMaps = useMemo(
+    () => buildParticipantNameMaps(splitWithCandidates),
+    [splitWithCandidates]
+  );
+
+  const selectedParticipantNameMaps = useMemo(() => {
+    const selectedParticipants = formState.selectedFriends.flatMap((friendId) => {
+      if (friendId === currentUser?.id.toString() && currentUser) {
+        return [{
+          id: currentUser.id.toString(),
+          firstName: currentUser.first_name as string | null | undefined,
+          lastName: currentUser.last_name as string | null | undefined,
+        }];
+      }
+
+      const friend = friends.find((f) => f.id.toString() === friendId);
+      return friend
+        ? [{
+            id: friend.id.toString(),
+            firstName: friend.first_name as string | null | undefined,
+            lastName: friend.last_name as string | null | undefined,
+          }]
+        : [];
+    });
+
+    return buildParticipantNameMaps(selectedParticipants);
+  }, [formState.selectedFriends, currentUser, friends]);
 
   const toggleFriend = (friendId: string) => {
     const newSelection = formState.selectedFriends.includes(friendId)
@@ -103,7 +150,10 @@ export function AutoSplitForm({
     // Only add current user if explicitly included in selectedFriends
     const includeCurrentUser = formState.selectedFriends.includes(currentUser?.id.toString() || "");
     if (currentUser && includeCurrentUser) {
-      participantNames.push(currentUser.first_name);
+      participantNames.push(
+        selectedParticipantNameMaps.commentNameById[currentUser.id.toString()] ||
+          currentUser.first_name
+      );
     }
 
     formState.selectedFriends.forEach((friendId) => {
@@ -112,7 +162,10 @@ export function AutoSplitForm({
 
       const friend = friends.find((f) => f.id.toString() === friendId);
       if (friend) {
-        participantNames.push(friend.first_name);
+        participantNames.push(
+          selectedParticipantNameMaps.commentNameById[friend.id.toString()] ||
+            friend.first_name
+        );
       }
     });
     formData.append("participants", JSON.stringify(participantNames));
@@ -264,7 +317,7 @@ export function AutoSplitForm({
                       htmlFor="auto-friend-me"
                       className="text-sm font-medium leading-none cursor-pointer"
                     >
-                      {currentUser.first_name}
+                      {splitWithNameMaps.displayNameById[currentUser.id.toString()] || currentUser.first_name}
                     </label>
                   </div>
                 )}
@@ -279,7 +332,7 @@ export function AutoSplitForm({
                       htmlFor={`auto-friend-${friend.id}`}
                       className="text-sm font-medium leading-none cursor-pointer"
                     >
-                      {friend.first_name} {friend.last_name || ""}
+                      {splitWithNameMaps.displayNameById[friend.id.toString()] || friend.first_name}
                     </label>
                   </div>
                 ))}
